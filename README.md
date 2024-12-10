@@ -15,7 +15,7 @@ around you much more quickly and easily than you would think."
 -- Marc Andreessen
 ```
 
-## Explorations
+## Agent Explorations
 
 | Ideas               |  Notebook example                        |
 | ------------------- | ---------------------------------------- |
