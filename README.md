@@ -25,7 +25,7 @@ around you much more quickly and easily than you would think."
 
 ## Tools Used
 
-| Name               |  Github link                        |
+| Name               |  Why?                        |
 | ------------------- | ---------------------------------------- |
-| Langfun    | [A must-have tool that introduces Object-Oriented Prompting, enabling the seamless integration of natural language and programming by treating language as functions—empowering users to build agents with ease.](https://github.com/google/langfun/tree/main)|
+| Langfun    | A must-have tool that introduces Object-Oriented Prompting, enabling the seamless integration of natural language and programming by treating language as functions—empowering users to build agents with ease. [Github link](https://github.com/google/langfun/tree/main)|
 
