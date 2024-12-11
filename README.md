@@ -5,7 +5,7 @@ Reflecting on the transformative journey of artificial intelligence, I am profou
 grateful to witness and participate in this revolution. Eager to learn and grow 
 alongside the AI community, I am driven by curiosity about how AI can assist 
 humanity and shape future directions. To bring my ideas to fruition, I plan to 
-utilize various AI-powered tools to build prototypes and turn concepts into reality.
+utilize various AI-powered tools to **build prototypes and turn concepts into reality**.
 
 ```
 " The world is a very malleable place. If you know what you want, and you go for
