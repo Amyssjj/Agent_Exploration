@@ -20,6 +20,7 @@ around you much more quickly and easily than you would think."
 | Ideas               |  Notebook example                        |
 | ------------------- | ---------------------------------------- |
 | Youtube Insights    | [From Natural Language to Key Insights: The 3-Steps YouTube Data Pipeline](https://github.com/Amyssjj/Agent_Exploration/blob/main/Agent_Youtube_Insights_Fetcher.ipynb)|
+| Langfun Tutorials    | [Langfun for Langfun: Personalized tutorial Agent](https://github.com/Amyssjj/Agent_Exploration/blob/main/Agent_Langfun_Tutorial.ipynb)|
 
 
 
@@ -30,4 +31,5 @@ around you much more quickly and easily than you would think."
 | Name               |  Why?                        |
 | ------------------- | ---------------------------------------- |
 | [Langfun](https://github.com/google/langfun/tree/main)    | A must-have tool that introduces Object-Oriented Prompting, enabling the seamless integration of natural language and programming by treating language as functions—empowering users to build agents with ease.
+
 
