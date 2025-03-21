@@ -1,0 +1,14 @@
+{
+  "name": "notion-markdown-utils",
+  "version": "1.0.0",
+  "description": "Node.js bridge for converting Markdown to Notion blocks using @tryfabric/martian",
+  "main": "markdown_to_notion.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@tryfabric/martian": "^1.2.4"
+  },
+  "author": "",
+  "license": "MIT"
+}
