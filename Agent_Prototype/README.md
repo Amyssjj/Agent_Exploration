@@ -1,11 +1,13 @@
-# Langfun Apps
+# Agent Prototype
 
-This repository contains various applications built with langfun, a framework for language function programming.
+This directory contains a structured prototype for building intelligent agents using the langfun framework.
 
 ## Structure
 
 - `Agents/`: Contains multi-agent notebooks and agent implementations
   - `MultiAgent_TripPlanner.ipynb`: Trip planning agent using multiple specialized agents
+  - `Agent_Langfun_Tutorial.ipynb`: Personalized tutorial agent for langfun
+  - `Agent_Youtube_Insights_Fetcher.ipynb`: YouTube data analysis agent
   
 - `Data/`: Storage for data files used by applications
   - Example itineraries and travel plans
