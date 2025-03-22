@@ -32,3 +32,10 @@ build/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+/Data
+/Logs
+/Temp
+/Config
+/Cache
+
