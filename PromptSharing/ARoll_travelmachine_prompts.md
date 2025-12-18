@@ -1,4 +1,4 @@
-Opening Prompt:
+## Opening Prompt:
 
 [Cinematography] Slow, steady, cinematic push-in (zoom) that tracks perfectly along a horizontal axis, maintaining a symmetrical composition + 
 [Subject] a crisp, thin black timeline line drawing itself across the screen, holding minimalist white-bordered photo frames + 
@@ -7,5 +7,9 @@ Opening Prompt:
 [Style & Ambiance] High-key photography, soft diffused lighting (softbox style), ultra-clean, Apple-style aesthetic, serene, nostalgic, photorealistic.
 
 
-Timeline slider follow up Prompt: 
+## Timeline slider follow up Prompt: 
 can we add another shot is glide through the horizontal, and zoom in for every pictures.
+
+
+## Birdview Prompt: 
+Crane shot starting low on a lone hiker and ascending high above, revealing they are standing on the edge of a colossal, mist-filled canyon at sunrise, epic fantasy style, awe-inspiring, soft morning light
