@@ -255,8 +255,6 @@ Create a file anywhere on your computer named `manim-skill.md` with the followin
 
 description: Create mathematical animations using Manim via MCP server. Use when the user asks to create animations, visualizations, or videos involving mathematics, geometry, graphs, transformations, data visualizations, charts, or any animated educational content. Triggers include requests for animated circles, squares, graphs, equations, geometric transformations, pie charts, bar charts, or any "Manim animation".
 
----
-
 **Manim MCP**
 
 Create mathematical animations using the Manim MCP server.
@@ -271,7 +269,6 @@ The Manim MCP server provides tools for creating and rendering animations. Use t
 2. The MCP server handles rendering with the configured Manim executable
 3. Output videos are generated in the configured output directory
 
----
 
 **CRITICAL: Animation Quality Guidelines**
 
@@ -457,7 +454,7 @@ class MyScene(Scene):
 | Inconsistent colors | Confusing visualization | Define color scheme upfront |
 | No minimum bar height | Small values invisible | Set `height = max(height, 0.3)` |
 
----
+
 Data Visualization Checklist
 
 Before rendering any data visualization:
@@ -471,7 +468,7 @@ Before rendering any data visualization:
 - [ ] Minimum visible size for small values
 - [ ] Title has `buff=0.5+` from content
 
-
+---
 
 ### Step 2: Upload the SKILL.md file in the Claude desktop app "settings --> capabilities" and save.
 ## 6. Test and Verify
