@@ -251,21 +251,21 @@ A Skill file tells Claude **when** to use Manim and **how to use it well**.
 Create a file anywhere on your computer named `manim-skill.md` with the following content:
 
 ---
-name: manim-mcp
+**name**: manim-mcp
 
 description: Create mathematical animations using Manim via MCP server. Use when the user asks to create animations, visualizations, or videos involving mathematics, geometry, graphs, transformations, data visualizations, charts, or any animated educational content. Triggers include requests for animated circles, squares, graphs, equations, geometric transformations, pie charts, bar charts, or any "Manim animation".
 
 ---
 
-# Manim MCP
+**Manim MCP**
 
 Create mathematical animations using the Manim MCP server.
 
-## MCP Tools Available
+**MCP Tools Available**
 
 The Manim MCP server provides tools for creating and rendering animations. Use the MCP tools directly rather than writing Python scripts manually.
 
-## Workflow
+**Workflow**
 
 1. Use the Manim MCP tools to create scenes and animations
 2. The MCP server handles rendering with the configured Manim executable
@@ -273,11 +273,11 @@ The Manim MCP server provides tools for creating and rendering animations. Use t
 
 ---
 
-## CRITICAL: Animation Quality Guidelines
+**CRITICAL: Animation Quality Guidelines**
 
 Follow these rules to ensure high-quality animations on the first attempt.
 
-### 1. Animation Timing (Prevent Mid-Animation Captures)
+**1. Animation Timing (Prevent Mid-Animation Captures)**
 
 **ALWAYS add `self.wait()` after every animation to ensure completion:**
 
@@ -299,7 +299,7 @@ self.play(FadeIn(subtitle), run_time=0.5)  # May capture mid-transition
 - Between scene transitions: `self.wait(0.3)`
 - At end of scene before FadeOut: `self.wait(2)` (let viewer read)
 
-### 2. Positioning (Prevent Overlapping Elements)
+**2. Positioning (Prevent Overlapping Elements)**
 
 **ALWAYS use `.next_to()` with explicit `buff` parameter:**
 
@@ -320,7 +320,7 @@ value_label.move_to(bar.get_top())  # Will overlap with bar
 - Between text lines: `buff=0.3` minimum
 - Edge padding: `buff=0.4` minimum
 
-### 3. Data Visualization Rules
+**3. Data Visualization Rules**
 
 #### Pie Charts - MUST Sum to 100%
 
@@ -360,7 +360,7 @@ legend.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
 legend.move_to(RIGHT * 3.5)  # Position away from pie
 ```
 
-#### Bar Charts - Proper Label Positioning
+**Bar Charts - Proper Label Positioning**
 
 ```python
 # ✅ CORRECT - Labels never overlap with bars
@@ -390,7 +390,7 @@ def create_bar_with_labels(value, label, color, x_pos, max_val, max_height):
     return VGroup(bar, value_text, label_text)
 ```
 
-#### Horizontal Bar Charts - Proportional Widths
+**Horizontal Bar Charts - Proportional Widths**
 
 ```python
 # ✅ CORRECT - Bar width proportional to value
@@ -405,7 +405,7 @@ for country, pct, color in data:
     pct_label.next_to(bar, RIGHT, buff=0.2)  # Right of bar
 ```
 
-### 4. Color Consistency
+**4. Color Consistency**
 
 **Define colors once and reuse throughout:**
 
@@ -421,7 +421,7 @@ AMBER = "#F4B400"         # Secondary data
 # e.g., South Korea = TEAL_BLUE in pie chart AND bar chart
 ```
 
-### 5. Scene Structure Template
+**5. Scene Structure Template**
 
 ```python
 class MyScene(Scene):
@@ -445,7 +445,7 @@ class MyScene(Scene):
         # SCENE 2: Next section...
 ```
 
-### 6. Common Mistakes to Avoid
+**6. Common Mistakes to Avoid**
 
 | Mistake | Problem | Solution |
 |---------|---------|----------|
@@ -458,48 +458,7 @@ class MyScene(Scene):
 | No minimum bar height | Small values invisible | Set `height = max(height, 0.3)` |
 
 ---
-
-## Common Animation Patterns
-
-### Basic Shapes
-- `Circle`, `Square`, `Triangle`, `Rectangle`, `Polygon`
-- Set color with `color=BLUE`, fill with `fill_opacity=1`
-
-### Transformations
-- `Transform(obj1, obj2)` - morph one object into another
-- `ReplacementTransform` - replace one object with another
-- `FadeIn`, `FadeOut`, `GrowFromCenter`, `GrowFromEdge`
-
-### Text and Math
-- `Text("Hello")` - plain text
-- `Text("Bold", weight=BOLD)` - bold text
-- `MathTex(r"\int_0^1 x^2 dx")` - LaTeX math
-- `Tex(r"$E = mc^2$")` - inline LaTeX
-
-### Animation Timing
-- `run_time=2` - duration in seconds
-- `self.wait(1)` - pause for 1 second
-- `self.play(anim1, anim2)` - play simultaneously
-- `LaggedStart(*anims, lag_ratio=0.2)` - staggered animations
-
-### Positioning
-- `.to_edge(UP/DOWN/LEFT/RIGHT, buff=0.5)` - edge positioning
-- `.next_to(obj, UP/DOWN/LEFT/RIGHT, buff=0.3)` - relative positioning
-- `.move_to(ORIGIN)` or `.move_to([x, y, 0])` - absolute positioning
-- `.align_to(obj, UP/DOWN/LEFT/RIGHT)` - alignment
-
-### Grouping
-- `VGroup(obj1, obj2, obj3)` - group objects
-- `group.arrange(DOWN, buff=0.3)` - arrange vertically
-- `group.arrange(RIGHT, buff=0.3)` - arrange horizontally
-
-## Colors
-
-Available: `RED`, `BLUE`, `GREEN`, `YELLOW`, `ORANGE`, `PURPLE`, `WHITE`, `BLACK`, `PINK`, `TEAL`, `GOLD`, `GRAY`
-
-Hex colors: `color="#FFD700"` for custom colors
-
-## Data Visualization Checklist
+Data Visualization Checklist
 
 Before rendering any data visualization:
 
@@ -512,15 +471,7 @@ Before rendering any data visualization:
 - [ ] Minimum visible size for small values
 - [ ] Title has `buff=0.5+` from content
 
-## Example Requests
 
-- "Create an animation of a circle transforming into a square"
-- "Animate the Pythagorean theorem"
-- "Show a sine wave being drawn"
-- "Visualize matrix multiplication"
-- "Create a pie chart showing market share"
-- "Animate a bar chart comparison"
-- "Create a data visualization video with multiple scenes"
 
 ### Step 2: Upload the SKILL.md file in the Claude desktop app "settings --> capabilities" and save.
 ## 6. Test and Verify
