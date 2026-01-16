@@ -250,71 +250,277 @@ A Skill file tells Claude **when** to use Manim and **how to use it well**.
 
 Create a file anywhere on your computer named `manim-skill.md` with the following content:
 
-```markdown
-# Manim Animation Guide
+---
+name: manim-mcp
+description: Create mathematical animations using Manim via MCP server. Use when the user asks to create animations, visualizations, or videos involving mathematics, geometry, graphs, transformations, data visualizations, charts, or any animated educational content. Triggers include requests for animated circles, squares, graphs, equations, geometric transformations, pie charts, bar charts, or any "Manim animation".
+---
 
-Use the Manim MCP tool when users request animations, visualizations, or math demonstrations.
+# Manim MCP
 
-## When to Use Manim
-- Mathematical animations (geometry, formula derivations)
-- Data visualizations (pie charts, bar charts)
-- Educational demonstration videos
-- Any request involving "animation" or "Manim"
+Create mathematical animations using the Manim MCP server.
 
-## Key Rules
+## MCP Tools Available
 
-### 1. Always add wait() after each animation
+The Manim MCP server provides tools for creating and rendering animations. Use the MCP tools directly rather than writing Python scripts manually.
+
+## Workflow
+
+1. Use the Manim MCP tools to create scenes and animations
+2. The MCP server handles rendering with the configured Manim executable
+3. Output videos are generated in the configured output directory
+
+---
+
+## CRITICAL: Animation Quality Guidelines
+
+Follow these rules to ensure high-quality animations on the first attempt.
+
+### 1. Animation Timing (Prevent Mid-Animation Captures)
+
+**ALWAYS add `self.wait()` after every animation to ensure completion:**
+
 ```python
+# ✅ CORRECT - Wait after each animation
 self.play(Write(title), run_time=1)
-self.wait(0.5)  # ← Required! Prevents frame cutoff
+self.wait(0.5)  # CRITICAL: Let animation fully complete
+self.play(FadeIn(subtitle), run_time=0.5)
+self.wait(0.5)  # CRITICAL: Pause before next animation
+
+# ❌ WRONG - No wait between animations
+self.play(Write(title), run_time=1)
+self.play(FadeIn(subtitle), run_time=0.5)  # May capture mid-transition
 ```
 
-### 2. Use buff parameter for element positioning
+**Recommended wait times:**
+- After title/header animations: `self.wait(0.5)`
+- After main content appears: `self.wait(1)` to `self.wait(2)`
+- Between scene transitions: `self.wait(0.3)`
+- At end of scene before FadeOut: `self.wait(2)` (let viewer read)
+
+### 2. Positioning (Prevent Overlapping Elements)
+
+**ALWAYS use `.next_to()` with explicit `buff` parameter:**
+
 ```python
-title.to_edge(UP, buff=0.6)  # Title with margin
-label.next_to(bar, UP, buff=0.15)  # Labels don't overlap
+# ✅ CORRECT - Explicit positioning with buffers
+title.to_edge(UP, buff=0.6)  # Title at top with padding
+value_label.next_to(bar, UP, buff=0.15)  # Label above bar
+country_label.next_to(bar, DOWN, buff=0.15)  # Label below bar
+
+# ❌ WRONG - Overlapping risk
+title.to_edge(UP)  # May overlap with content
+value_label.move_to(bar.get_top())  # Will overlap with bar
 ```
 
-### 3. Pie chart data must equal 100%
+**Minimum buffer values:**
+- Title to content: `buff=0.5` minimum
+- Labels to shapes: `buff=0.15` minimum
+- Between text lines: `buff=0.3` minimum
+- Edge padding: `buff=0.4` minimum
+
+### 3. Data Visualization Rules
+
+#### Pie Charts - MUST Sum to 100%
+
 ```python
-data = [45, 35, 15, 5]  # Must sum to 100
+# ✅ CORRECT - Verify data integrity
+data = [45, 35, 15, 5]  # US, APAC, Europe, Other
+assert sum(data) == 100, f"Pie chart must sum to 100%, got {sum(data)}"
+
+# Create sectors using AnnularSector (NOT Sector)
+sectors = VGroup()
+start_angle = 90  # Start from top
+radius = 2
+
+for value, color in zip(data, colors):
+    angle = value * 3.6  # 360/100 = 3.6 degrees per percent
+    sector = AnnularSector(
+        inner_radius=0,
+        outer_radius=radius,
+        angle=angle * DEGREES,
+        start_angle=start_angle * DEGREES,
+        fill_color=color,
+        fill_opacity=1,
+        stroke_color=WHITE,
+        stroke_width=2
+    )
+    sectors.add(sector)
+    start_angle += angle
+
+# ALWAYS add a legend for pie charts
+legend = VGroup()
+for label, color in zip(labels, colors):
+    dot = Dot(color=color, radius=0.12)
+    text = Text(label, font_size=24)
+    item = VGroup(dot, text).arrange(RIGHT, buff=0.2)
+    legend.add(item)
+legend.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
+legend.move_to(RIGHT * 3.5)  # Position away from pie
 ```
 
-### 4. Common Animations
-- FadeIn / FadeOut - fade effects
-- Write - writing effect
-- Transform - morphing
-- GrowFromCenter - grow from center
+#### Bar Charts - Proper Label Positioning
 
-### 5. Colors
-RED, BLUE, GREEN, YELLOW, WHITE, GOLD, TEAL, PURPLE
-Or use hex: color="#FFD700"
+```python
+# ✅ CORRECT - Labels never overlap with bars
+def create_bar_with_labels(value, label, color, x_pos, max_val, max_height):
+    height = (value / max_val) * max_height
+    if height < 0.3:
+        height = 0.3  # Minimum visible height
+    
+    bar = Rectangle(
+        width=1.2,
+        height=height,
+        fill_color=color,
+        fill_opacity=1,
+        stroke_color=WHITE,
+        stroke_width=1
+    )
+    bar.move_to([x_pos, -2.5 + height/2, 0])  # Anchor at bottom
+    
+    # Value ABOVE bar
+    value_text = Text(str(value), font_size=28, weight=BOLD)
+    value_text.next_to(bar, UP, buff=0.15)
+    
+    # Label BELOW bar
+    label_text = Text(label, font_size=22)
+    label_text.next_to(bar, DOWN, buff=0.15)
+    
+    return VGroup(bar, value_text, label_text)
 ```
 
-### Step 2: Add to Project in Claude Desktop
+#### Horizontal Bar Charts - Proportional Widths
 
-1. Open **Claude Desktop**
-2. Click **"Projects"** in the left sidebar
-3. Click **"Create Project"** to create a new project, e.g., **"Manim Animations"**
-4. Enter the project, click the **settings icon ⚙️** in the top right
-5. Find the **"Project Knowledge"** section
-6. Click **"Add Content"** → **"Upload Files"**
-7. Upload the `manim-skill.md` file you just created
+```python
+# ✅ CORRECT - Bar width proportional to value
+max_bar_width = 8
+for country, pct, color in data:
+    bar_width = (pct / 100) * max_bar_width  # Proportional
+    bar = Rectangle(width=bar_width, height=0.6, fill_color=color)
+    bar.move_to([-3 + bar_width/2, y_pos, 0])  # Left-aligned
+    
+    # Fixed-position labels (won't overlap)
+    country_label.move_to([-6, y_pos, 0])  # Fixed left column
+    pct_label.next_to(bar, RIGHT, buff=0.2)  # Right of bar
+```
 
-### Step 3: Verify the Skill is active
+### 4. Color Consistency
 
-Start a new conversation in this project and ask Claude:
+**Define colors once and reuse throughout:**
 
-> "Do you know how to use Manim? What should I be careful about?"
+```python
+# ✅ CORRECT - Consistent color scheme
+GOLD_COLOR = "#FFD700"    # Titles, highlights
+CORAL = "#E57373"         # Negative trends, warnings
+TEAL_BLUE = "#4A90D9"     # Primary data
+FOREST_GREEN = "#34A853"  # Positive trends
+AMBER = "#F4B400"         # Secondary data
 
-Claude should mention `wait()`, `buff` spacing, and other tips from your Skill file.
+# Use same color for same data type across all charts
+# e.g., South Korea = TEAL_BLUE in pie chart AND bar chart
+```
+
+### 5. Scene Structure Template
+
+```python
+class MyScene(Scene):
+    def construct(self):
+        # SCENE 1: Title
+        title = Text("Title", font_size=48, color=GOLD)
+        title.to_edge(UP, buff=0.6)
+        self.play(Write(title), run_time=1)
+        self.wait(0.5)  # ← CRITICAL
+        
+        # SCENE 1: Content
+        content = Text("Content", font_size=32)
+        content.move_to(ORIGIN)
+        self.play(FadeIn(content), run_time=0.8)
+        self.wait(1.5)  # ← Let viewer read
+        
+        # SCENE 1: Transition out
+        self.play(FadeOut(VGroup(title, content)), run_time=0.8)
+        self.wait(0.3)  # ← Clean gap before next scene
+        
+        # SCENE 2: Next section...
+```
+
+### 6. Common Mistakes to Avoid
+
+| Mistake | Problem | Solution |
+|---------|---------|----------|
+| No `self.wait()` | Text appears cut off mid-animation | Add `self.wait(0.5)` after every `self.play()` |
+| Using `Sector()` | May cause parameter conflicts | Use `AnnularSector(inner_radius=0, ...)` |
+| Pie data ≠ 100% | Chart looks incomplete | Always `assert sum(data) == 100` |
+| No legend on pie | Viewers can't understand colors | Always add color-coded legend |
+| Labels overlap bars | Unreadable text | Use `.next_to(bar, UP/DOWN, buff=0.15)` |
+| Inconsistent colors | Confusing visualization | Define color scheme upfront |
+| No minimum bar height | Small values invisible | Set `height = max(height, 0.3)` |
 
 ---
 
-> 💡 **Tip**: Keep all your Manim-related conversations in this project, and Claude will automatically reference the Skill file.
+## Common Animation Patterns
 
----
+### Basic Shapes
+- `Circle`, `Square`, `Triangle`, `Rectangle`, `Polygon`
+- Set color with `color=BLUE`, fill with `fill_opacity=1`
 
+### Transformations
+- `Transform(obj1, obj2)` - morph one object into another
+- `ReplacementTransform` - replace one object with another
+- `FadeIn`, `FadeOut`, `GrowFromCenter`, `GrowFromEdge`
+
+### Text and Math
+- `Text("Hello")` - plain text
+- `Text("Bold", weight=BOLD)` - bold text
+- `MathTex(r"\int_0^1 x^2 dx")` - LaTeX math
+- `Tex(r"$E = mc^2$")` - inline LaTeX
+
+### Animation Timing
+- `run_time=2` - duration in seconds
+- `self.wait(1)` - pause for 1 second
+- `self.play(anim1, anim2)` - play simultaneously
+- `LaggedStart(*anims, lag_ratio=0.2)` - staggered animations
+
+### Positioning
+- `.to_edge(UP/DOWN/LEFT/RIGHT, buff=0.5)` - edge positioning
+- `.next_to(obj, UP/DOWN/LEFT/RIGHT, buff=0.3)` - relative positioning
+- `.move_to(ORIGIN)` or `.move_to([x, y, 0])` - absolute positioning
+- `.align_to(obj, UP/DOWN/LEFT/RIGHT)` - alignment
+
+### Grouping
+- `VGroup(obj1, obj2, obj3)` - group objects
+- `group.arrange(DOWN, buff=0.3)` - arrange vertically
+- `group.arrange(RIGHT, buff=0.3)` - arrange horizontally
+
+## Colors
+
+Available: `RED`, `BLUE`, `GREEN`, `YELLOW`, `ORANGE`, `PURPLE`, `WHITE`, `BLACK`, `PINK`, `TEAL`, `GOLD`, `GRAY`
+
+Hex colors: `color="#FFD700"` for custom colors
+
+## Data Visualization Checklist
+
+Before rendering any data visualization:
+
+- [ ] Pie chart data sums to exactly 100%
+- [ ] All charts have legends or labels
+- [ ] No text overlaps with shapes
+- [ ] `self.wait()` after every animation
+- [ ] Consistent color scheme throughout
+- [ ] Bar widths/heights proportional to values
+- [ ] Minimum visible size for small values
+- [ ] Title has `buff=0.5+` from content
+
+## Example Requests
+
+- "Create an animation of a circle transforming into a square"
+- "Animate the Pythagorean theorem"
+- "Show a sine wave being drawn"
+- "Visualize matrix multiplication"
+- "Create a pie chart showing market share"
+- "Animate a bar chart comparison"
+- "Create a data visualization video with multiple scenes"
+
+### Step 2: Upload the SKILL.md file in the Claude desktop app "settings --> capabilities" and save.
 ## 6. Test and Verify
 
 ### Test 1: Check MCP connection
