@@ -252,7 +252,9 @@ Create a file anywhere on your computer named `manim-skill.md` with the followin
 
 ---
 name: manim-mcp
+
 description: Create mathematical animations using Manim via MCP server. Use when the user asks to create animations, visualizations, or videos involving mathematics, geometry, graphs, transformations, data visualizations, charts, or any animated educational content. Triggers include requests for animated circles, squares, graphs, equations, geometric transformations, pie charts, bar charts, or any "Manim animation".
+
 ---
 
 # Manim MCP
