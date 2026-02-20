@@ -1,0 +1,8 @@
+# Only track markdown files
+*.py
+*.sh
+*.js
+*.ts
+*.rb
+*.go
+*.rs

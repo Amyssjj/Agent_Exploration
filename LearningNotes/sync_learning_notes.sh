@@ -6,7 +6,7 @@ SRC="/Volumes/Motus_SSD/mac_mini/ClawdBot_Github/openclaw/UnderStanding/"
 DEST="/Volumes/Motus_SSD/CommunitySharing/Agent_Exploration/LearningNotes/"
 
 # Copy new/updated files (skip .git, this script, and Readme.md)
-rsync -av --ignore-existing --exclude='.git' --exclude='sync_learning_notes.sh' --exclude='Readme.md' "$SRC" "$DEST"
+rsync -av --ignore-existing --include='*.md' --exclude='*' --exclude='.git' "$SRC" "$DEST"
 
 cd "$DEST"
 
