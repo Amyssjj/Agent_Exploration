@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.venv/
+media/
+_concat_list.txt
+*.mp4
+.ruff_cache/
+.mypy_cache/

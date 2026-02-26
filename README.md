@@ -31,6 +31,12 @@ This repository includes a structured prototype for building intelligent agents:
   - `Tools/`: Custom actions for Google Maps, Notion integration, search, and file operations
   - `Data/`: Example data and outputs from agents
 
+## CLI Tools
+
+| Tool | Description |
+| ---- | ----------- |
+| [ExplainClip](CLIs/explainclip/) | Production-quality animated explainer videos from the command line. An opinionated Manim toolkit with configurable themes, smart CN/EN font detection, glass overlays, and a full render pipeline. Works great with AI coding agents. |
+
 ## Tools Used
 
 | Name               |  Why?                        |
