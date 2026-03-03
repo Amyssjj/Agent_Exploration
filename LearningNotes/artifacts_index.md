@@ -1,18 +1,29 @@
 # Understanding Artifacts Index
 
-| Artifact Title | Description | Direct Link |
-| :--- | :--- | :--- |
-| **OpenClaw Architecture Guide** | Comprehensive guide with Critique, Mental Models, and **Rendered Charts**. | [View Artifact](./architecture_guide.md) |
-| **Skills & Agents Understanding** | How Skills and Agents work together: loading, filtering, and configuration. | [View Artifact](./skills_understanding.md) |
-| **Video Analysis Understanding** | How OpenClaw analyzes videos: size limits, base64 encoding, Gemini API, token usage. | [View Artifact](./video_analysis_understanding.md) |
-| **Token Efficiency Evaluation** | OpenClaw vs Claude Code per-call token comparison with measured numbers from codebase. | [View Artifact](./token_efficiency_evaluation.md) |
-| **Session Architecture & Scenarios** | Deep dive into `session_status`, storing state, threading, and model overrides. | [View Artifact](./session_architecture.md) |
-| **System Prompt & Optimization** | Analysis of token usage drivers (context/skills) and strategies to reduce per-turn cost. | [View Artifact](./system_prompt_structure.md) |
-| **Exec Approval Plan & Safe Scripting** | Strategy for safe "General Control" of commands (Allowlist + Python) to avoid prompts. | [View Artifact](./exec_approval_implementation_plan.md) |
-| **Agent Collaboration & Architecture** | High-level insights on Direct vs Channel routing, Hybrid Event Bus model, and interaction diagrams. | [View Artifact](./agent_collaboration_insights.md) |
-| **Relationship between tools, memory, soul** | Deep dive into `TOOLS.md`, `MEMORY.md`, and `SOUL.md` with relationship visualization. | [View Artifact](./tools_memory_soul_relationship.md) |
-| **Agent Structure & Workflow Guide** | Findings on essential agent files (`AGENTS.md`) and how to implement workflows (Projects). | [View Artifact](./investigation_agent_structure_workflow.md) |
-| **Agent Files Best Practices** | How to cleanly separate SOUL, AGENTS, MEMORY, TOOLS, and SKILL files — decision flowchart and overlap fixes. | [View Artifact](./agent_files_best_practices.md) |
-| **Workflow Enforcement Analysis** | Why STATUS.md goes stale, what's actually enforceable (gateway-level only), heartbeat vs cron for session reflection. | [View Artifact](./workflow_enforcement_analysis.md) |
-| **Exec Security Two-Layer Flow** | How `openclaw.json` (agent layer) and `exec-approvals.json` (host layer) work together — 4 scenarios + employee handbook/building security analogy. | [View Artifact](./exec_security_two_layer_flow.md) |
-
+| Artifact Title | Description | Created Date | Direct Link |
+| :--- | :--- | :--- | :--- |
+| **OpenClaw Architecture Guide** | Comprehensive guide with Critique, Mental Models, and **Rendered Charts**. | 2026-02-12 | [View Artifact](./2026-02-12_architecture_guide.md) |
+| **Skills & Agents Understanding** | How Skills and Agents work together: loading, filtering, and configuration. | 2026-02-12 | [View Artifact](./2026-02-12_skills_understanding.md) |
+| **Video Analysis Understanding** | How OpenClaw analyzes videos: size limits, base64 encoding, Gemini API, token usage. | 2026-02-12 | [View Artifact](./2026-02-12_video_analysis_understanding.md) |
+| **Token Efficiency Evaluation** | OpenClaw vs Claude Code per-call token comparison with measured numbers from codebase. | 2026-02-12 | [View Artifact](./2026-02-12_token_efficiency_evaluation.md) |
+| **Session Architecture & Scenarios** | Deep dive into `session_status`, storing state, threading, and model overrides. | 2026-02-12 | [View Artifact](./2026-02-12_session_architecture.md) |
+| **System Prompt & Optimization** | Analysis of token usage drivers (context/skills) and strategies to reduce per-turn cost. | 2026-02-12 | [View Artifact](./2026-02-12_system_prompt_structure.md) |
+| **Exec Approval Plan & Safe Scripting** | Strategy for safe "General Control" of commands (Allowlist + Python) to avoid prompts. | 2026-02-12 | [View Artifact](./2026-02-12_exec_approval_implementation_plan.md) |
+| **Agent Collaboration & Architecture** | High-level insights on Direct vs Channel routing, Hybrid Event Bus model, and interaction diagrams. | 2026-02-13 | [View Artifact](./2026-02-13_agent_collaboration_insights.md) |
+| **Relationship between tools, memory, soul** | Deep dive into `TOOLS.md`, `MEMORY.md`, and `SOUL.md` with relationship visualization. | 2026-02-13 | [View Artifact](./2026-02-13_tools_memory_soul_relationship.md) |
+| **Agent Structure & Workflow Guide** | Findings on essential agent files (`AGENTS.md`) and how to implement workflows (Projects). | 2026-02-13 | [View Artifact](./2026-02-13_investigation_agent_structure_workflow.md) |
+| **Agent Files Best Practices** | How to cleanly separate SOUL, AGENTS, MEMORY, TOOLS, and SKILL files — decision flowchart and overlap fixes. | 2026-02-16 | [View Artifact](./2026-02-16_agent_files_best_practices.md) |
+| **Story Arc Agent Setup** | Comprehensive analysis for configuring story agents with proper long-term context tracking and subagent structures. | 2026-02-16 | [View Artifact](./2026-02-16_story_arc_agent_setup.md) |
+| **Workflow Enforcement Analysis** | Why STATUS.md goes stale, what's actually enforceable (gateway-level only), heartbeat vs cron for session reflection. | 2026-02-17 | [View Artifact](./2026-02-17_workflow_enforcement_analysis.md) |
+| **Exec Security Two-Layer Flow** | How `openclaw.json` (agent layer) and `exec-approvals.json` (host layer) work together — 4 scenarios + employee handbook/building security analogy. | 2026-02-18 | [View Artifact](./2026-02-18_exec_security_two_layer_flow.md) |
+| **Error 11 (EAGAIN) Analysis** | Root cause analysis and mitigation strategies for intermittent OS resource limits and iCloud synchronization issues. | 2026-02-19 | [View Artifact](./2026-02-19_error_11_eagain_analysis.md) |
+| **Fixing Gateway Lock Timeouts** | Step-by-step guide to resolving zombie processes and missing build artifacts causing the gateway to fail to start. | 2026-02-20 | [View Artifact](./2026-02-20_fixing_gateway_lock_issues.md) |
+| **Automation Workflows Research** | Best practices for multi-agent automation via `sessions_spawn` and the Orchestrator + Shared State pattern. | 2026-02-22 | [View Artifact](./2026-02-22_automation_workflows_research.md) |
+| **Shared Knowledge Strategy** | How to set up a deterministic 'Surprises' database for agents using `extraPaths` and semantic deduplication. | 2026-02-22 | [View Artifact](./2026-02-22_Shared_knowledge_strategy.md) |
+| **Antigravity Deprecation & Migration {2026-02-23}** | Analysis of why the `google-antigravity-auth` plugin was removed (schema/thinking blocks failures) and how to migrate to `google-gemini-cli`. | 2026-02-23 | [View Artifact](./2026-02-23_antigravity_plugin_deprecation.md) |
+| **requireMention Deep Dive** | How mention gating works across Discord/Telegram, the self-message trap with shared bots, config cascade, preflight pipeline visualization, and inter-agent communication alternatives. | 2026-02-24 | [View Artifact](./2026-02-24_requireMention_deep_dive.md) |
+| **ACP Thread-Bound Agents** | How ACP thread-bound agents work: architecture (core control plane + pluggable acpx runtime), spawning coding agents (Claude, Codex, Gemini, etc.) into Discord threads, `/acp` commands, config, and lifecycle management. | 2026-02-27 | [View Artifact](./2026-02-27_acp_thread_bound_agents.md) |
+| **ACP Integration Analysis** | How ACP fits into the existing 6-agent architecture: what it solves (external coding agents in threads), what it doesn't (inter-agent comms), migration recommendations, and future possibilities. | 2026-02-27 | [View Artifact](./2026-02-27_acp_integration_analysis.md) |
+| **Workflow Setup Guide** | Step-by-step guide for migrating from synchronous `sessions_send` to asynchronous `sessions_spawn` for task delegation, and configuring the new ACP thread-bound agents feature. | 2026-02-27 | [View Artifact](./2026-02-27_workflow_setup_guide.md) |
+| **Discord Agent Commands & Exec Approvals** | Comprehensive guide on how Discord native slash commands are processed, list of commands, and a step-by-step setup for interactive execution approvals. | 2026-03-02 | [View Artifact](./2026-03-02_discord_agent_commands_and_exec_approvals.md) |
+| **ACP Deep Dive & acpx Debugging** | ACP architecture, subagent vs ACP spawn comparison, config reference, and debugging case study: resolving `acpx exited with code 1` (Claude Code auth expired). | 2026-03-03 | [View Artifact](./2026-03-03_acp_deep_dive_and_debugging.md) |
