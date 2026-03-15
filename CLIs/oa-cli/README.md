@@ -377,4 +377,4 @@ pytest
 
 ## License
 
-MIT — built by [MotusAI](https://motusai.com)
+MIT — built by MotusAI
