@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.venv/
+data/
+.ruff_cache/
+.mypy_cache/
+*.db

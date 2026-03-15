@@ -36,6 +36,7 @@ This repository includes a structured prototype for building intelligent agents:
 | Tool | Description |
 | ---- | ----------- |
 | [ExplainClip](CLIs/explainclip/) | Production-quality animated explainer videos from the command line. An opinionated Manim toolkit with configurable themes, smart CN/EN font detection, glass overlays, and a full render pipeline. Works great with AI coding agents. |
+| [OA CLI](CLIs/oa-cli/) | Operational analytics for your AI agent team. Auto-detects your OpenClaw setup, tracks cron reliability and agent health with zero config, serves a live dashboard — all from data your system already generates. |
 
 ## Tools Used
 
