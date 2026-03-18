@@ -180,16 +180,18 @@ def collect(goal: str | None, date: str | None, config_path: str):
 
 @main.command()
 @click.option("--port", "-p", default=3456, help="Port to serve on")
-def serve(port: int):
-    """Start the OA dashboard."""
-    console.print(Panel(
-        f"[yellow]Dashboard UI coming in a future release.[/]\n\n"
-        f"For now, use:\n"
-        f"  [bold]oa status[/]  — terminal health view\n"
-        f"  [bold]oa collect[/] — update metrics",
-        title="📊 OA Dashboard",
-        border_style="yellow",
-    ))
+@click.option("--config", "-c", "config_path", default="config.yaml", help="Config file path")
+@click.option("--no-open", is_flag=True, help="Don't open browser automatically")
+def serve(port: int, config_path: str, no_open: bool):
+    """Start the OA dashboard in your browser."""
+    from .server import serve as start_server
+
+    config_file = Path(config_path)
+    if not config_file.exists():
+        console.print("[red]Error:[/] config.yaml not found. Run `oa init` first.")
+        raise SystemExit(1)
+
+    start_server(port=port, config_path=config_path, open_browser=not no_open)
 
 
 # ━━━ oa status ━━━

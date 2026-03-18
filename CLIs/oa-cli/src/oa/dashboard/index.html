@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OA — Operational Analytics</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="header-left">
+        <h1>📊 OA Dashboard</h1>
+        <span class="subtitle">Operational Analytics</span>
+      </div>
+      <div class="header-right">
+        <div id="health-badge" class="badge badge-unknown">—</div>
+        <span id="last-collected" class="meta"></span>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-view="health">System Health</button>
+      <button class="tab" data-view="traces">Traces</button>
+    </nav>
+
+    <main id="content">
+      <!-- Populated by JS -->
+      <div class="loading">Loading...</div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

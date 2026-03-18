@@ -65,11 +65,13 @@ class TestCLI:
         assert "oa-collect" in result.output
         assert "7,12,19" in result.output
 
-    def test_serve_placeholder(self):
+    def test_serve_no_config(self):
         runner = CliRunner()
-        result = runner.invoke(main, ["serve"])
-        assert result.exit_code == 0
-        assert "coming" in result.output.lower() or "status" in result.output.lower()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with runner.isolated_filesystem(temp_dir=tmpdir):
+                result = runner.invoke(main, ["serve"])
+                assert result.exit_code == 1
+                assert "config.yaml not found" in result.output
 
     def test_full_workflow(self):
         """Integration test: init → collect → status."""
