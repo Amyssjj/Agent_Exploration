@@ -148,7 +148,7 @@ oa serve
 ```
 
 ```
-🖥️  Dashboard running at http://localhost:3456
+🖥️  Dashboard running at http://localhost:3460
 
   Goals:     2 tracked (Cron Reliability, Team Health)
   Agents:    4 configured
@@ -157,7 +157,14 @@ oa serve
   Press Ctrl+C to stop
 ```
 
-Opens your browser → live dashboard with goal cards, time-series charts, and health indicators. All from real data.
+Opens your browser → live React dashboard with:
+- **Goal cards** with sparkline charts and health indicators
+- **Goal-specific charts** — stacked bar + line for Cron Reliability, DAA dual chart for Team Health
+- **Metrics definition panel** — click 📐 to see datasource, calculation, and purpose for each metric
+- **Mechanism view** — SVG flow charts showing how data moves through pipelines
+- **Click-to-expand trace details** — full execution trace with span tree and attributes
+
+All from real data, auto-refreshes every 30 seconds.
 
 ### Step 5: Automate (Optional)
 
@@ -309,7 +316,8 @@ goals:
 | `oa init` | Auto-detect OpenClaw setup, create project |
 | `oa collect` | Run all data pipelines |
 | `oa collect --goal G1` | Run a specific pipeline |
-| `oa serve` | Start dashboard on localhost:3456 |
+| `oa serve` | Start dashboard on localhost:3460 |
+| `oa serve --port 8080` | Start dashboard on custom port |
 | `oa status` | Show current goal health (terminal) |
 | `oa cron show` | Show suggested cron schedule |
 | `oa doctor` | Check system dependencies |
@@ -331,7 +339,7 @@ agent memory files      ──────►     Did agents log their work?
                                     SQLite Database
                                            │
                                            ▼
-                                    Dashboard (localhost:3456)
+                                    Dashboard (localhost:3460)
 ```
 
 No servers to maintain. No cloud services. Everything runs on your machine.
@@ -344,7 +352,7 @@ No servers to maintain. No cloud services. Everything runs on your machine.
 
 ## Tracing
 
-Every data collection run produces OTel-compatible traces stored in SQLite. View them in the dashboard's Mechanism tab to see exactly how data flows through your system.
+Every data collection run produces OTel-compatible traces stored in SQLite. View them in the dashboard's **Mechanism** tab — SVG flow charts with shaped nodes (cylinder for DB, pill for cron, rectangle for scripts) and click-to-expand trace details.
 
 ```python
 # Built-in tracing — automatically wraps every pipeline
@@ -360,21 +368,37 @@ with tracer.span("Data Collection") as span:
 
 ## Roadmap
 
-- [ ] Pre-built dashboard (React static files bundled in pip package)
+- [x] Pre-built React dashboard (static files bundled in pip package — no Node required)
+- [x] SVG flow chart trace visualization
+- [x] Goal-specific charts (stacked bar + line, dual axis, per-agent bars)
+- [x] Metrics definition panel
+- [x] GitHub Actions auto-publish via PyPI trusted publishing
 - [ ] `oa export` — export metrics to CSV/JSON
 - [ ] More built-in goal templates (knowledge sharing, issue tracking)
+- [ ] Code-splitting for dashboard bundle optimization
 - [ ] OTel SDK export (optional, for users with existing observability)
 - [ ] OpenClaw skill package for autonomous monitoring
 
 ## Contributing
 
 ```bash
-git clone https://github.com/motusai/oa-cli
-cd oa-cli
+git clone https://github.com/Amyssjj/Agent_Exploration.git
+cd Agent_Exploration/CLIs/oa-cli
 pip install -e ".[dev]"
-pytest
+pytest  # 57 tests
+```
+
+### Dashboard Development
+
+The dashboard is a React app pre-built via Vite. End users never need Node — but if you're modifying the UI:
+
+```bash
+cd dashboard-src
+npm install
+npm run dev      # Vite dev server with hot reload
+npm run build    # Build to ../src/oa/dashboard/
 ```
 
 ## License
 
-MIT — built by MotusAI
+MIT — built by [MotusAI](https://github.com/Amyssjj/Agent_Exploration)

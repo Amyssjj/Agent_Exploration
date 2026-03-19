@@ -7,7 +7,7 @@ Serves:
 
 Usage:
     from oa.server import serve
-    serve(port=3456, config_path="config.yaml")
+    serve(port=3460, config_path="config.yaml")
 """
 from __future__ import annotations
 
@@ -309,7 +309,7 @@ def _get_last_collected(db: sqlite3.Connection) -> str | None:
     return row["d"] if row else None
 
 
-def serve(port: int = 3456, config_path: str = "config.yaml", open_browser: bool = True) -> None:
+def serve(port: int = 3460, config_path: str = "config.yaml", open_browser: bool = True) -> None:
     """Start the OA dashboard server."""
     OAHandler.config_path = config_path
     OAHandler._config_cache = None  # reset cache
@@ -318,7 +318,15 @@ def serve(port: int = 3456, config_path: str = "config.yaml", open_browser: bool
         print("Error: Dashboard files not found. Package may be incomplete.")
         return
 
-    server = HTTPServer(("127.0.0.1", port), OAHandler)
+    try:
+        server = HTTPServer(("127.0.0.1", port), OAHandler)
+    except OSError as e:
+        if "Address already in use" in str(e):
+            print(f"Error: Port {port} is already in use.")
+            print(f"  Try: oa serve --port {port + 1}")
+            print(f"  Or:  lsof -i :{port} | grep LISTEN  (to find the process)")
+            return
+        raise
     url = f"http://localhost:{port}"
 
     print(f"\n🖥️  OA Dashboard running at {url}\n")

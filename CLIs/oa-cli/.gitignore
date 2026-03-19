@@ -8,3 +8,7 @@ data/
 .ruff_cache/
 .mypy_cache/
 *.db
+node_modules/
+dashboard-src/node_modules/
+test-project/
+.DS_Store

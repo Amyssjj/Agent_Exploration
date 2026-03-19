@@ -2,15 +2,17 @@ import { motion } from "framer-motion";
 import { GoalCard } from "./GoalCard";
 import { GoalDetailSection } from "./GoalDetailSection";
 import { HealthSummaryStrip } from "./HealthSummaryStrip";
-import type { GoalSummary, HealthSummary } from "../types";
+import type { GoalSummary, HealthSummary, CronRun, AgentActivity } from "../types";
 
 interface Props {
   goals: GoalSummary[];
   health: HealthSummary | null;
   goalMetrics: Record<string, unknown[]>;
+  cronRuns: CronRun[];
+  teamHealth: AgentActivity[];
 }
 
-export function SystemHealth({ goals, health, goalMetrics }: Props) {
+export function SystemHealth({ goals, health, goalMetrics, cronRuns, teamHealth }: Props) {
   return (
     <div className="space-y-5">
       {/* Overall Health Strip */}
@@ -30,6 +32,8 @@ export function SystemHealth({ goals, health, goalMetrics }: Props) {
               goal={goal}
               index={i}
               metrics={goalMetrics[goal.id] || []}
+              cronRuns={cronRuns}
+              teamHealth={teamHealth}
             />
           </div>
         ))}

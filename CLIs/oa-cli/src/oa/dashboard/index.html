@@ -1,59 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OA Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body class="min-h-screen font-sans antialiased">
-  <div id="app" class="relative min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 py-6 relative z-10">
-
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-xl font-bold text-gray-900 tracking-tight">OA Dashboard</h1>
-          <p class="text-xs text-gray-400 mt-0.5">Is our machine getting better?</p>
-        </div>
-        <nav id="tabs" class="flex gap-6">
-          <button class="tab-btn pb-1 text-sm transition-all tab-active" data-view="system-health">System Health</button>
-          <button class="tab-btn pb-1 text-sm transition-all tab-inactive" data-view="traces">Traces</button>
-        </nav>
-      </div>
-
-      <!-- Health Summary Strip -->
-      <div id="health-strip" class="health-strip mb-5 hidden">
-        <div class="flex items-center gap-3">
-          <span class="text-sm font-medium text-gray-500">Overall Health</span>
-          <span id="overall-score" class="text-xl font-bold text-gray-900">—</span>
-          <span id="overall-trend" class="text-sm font-medium text-gray-400"></span>
-        </div>
-        <div id="health-dots" class="flex items-center gap-2"></div>
-        <div id="last-updated" class="text-xs text-gray-400 font-mono"></div>
-      </div>
-
-      <!-- Content -->
-      <main id="content">
-        <div class="flex items-center justify-center py-32">
-          <div class="text-center space-y-4">
-            <div class="spinner w-8 h-8 rounded-full border-2 border-gray-200 mx-auto"></div>
-            <p class="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-mono">Loading</p>
-          </div>
-        </div>
-      </main>
-
-      <!-- Footer -->
-      <div class="text-center py-4 mt-8">
-        <span class="text-[10px] text-gray-300 font-mono tracking-wider uppercase">OA — Operational Analytics</span>
-      </div>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OA Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="/assets/index-DMR571YI.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-bwzX5xZ-.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>

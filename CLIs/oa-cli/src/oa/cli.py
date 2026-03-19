@@ -166,7 +166,8 @@ def collect(goal: str | None, date: str | None, config_path: str):
                            created_at = datetime('now')""",
                     (date_str, goal_config.id, m.name, m.value, m.unit, breakdown_json),
                 )
-                console.print(f"    [green]✓[/] {m.name}: {m.value}{m.unit}")
+                sep = " " if m.unit and not m.unit.startswith("%") else ""
+                console.print(f"    [green]✓[/] {m.name}: {m.value}{sep}{m.unit}")
             db.commit()
             db.close()
 
@@ -179,7 +180,7 @@ def collect(goal: str | None, date: str | None, config_path: str):
 # ━━━ oa serve ━━━
 
 @main.command()
-@click.option("--port", "-p", default=3456, help="Port to serve on")
+@click.option("--port", "-p", default=3460, help="Port to serve on")
 @click.option("--config", "-c", "config_path", default="config.yaml", help="Config file path")
 @click.option("--no-open", is_flag=True, help="Don't open browser automatically")
 def serve(port: int, config_path: str, no_open: bool):

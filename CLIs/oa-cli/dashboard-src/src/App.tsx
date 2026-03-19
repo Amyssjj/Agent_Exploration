@@ -2,9 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOAData } from "./hooks/useOAData";
 import { SystemHealth } from "./components/SystemHealth";
-import { TracesView } from "./components/TracesView";
-
-type Tab = "system-health" | "traces";
+import { MechanismView } from "./components/MechanismView";
+type Tab = "system-health" | "mechanism";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("system-health");
@@ -25,7 +24,10 @@ export default function App() {
           </div>
 
           <nav className="flex gap-6">
-            {(["system-health", "traces"] as Tab[]).map((tab) => (
+            {([
+              ["system-health", "System Health"],
+              ["mechanism", "Mechanism"],
+            ] as [Tab, string][]).map(([tab, label]) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -33,7 +35,7 @@ export default function App() {
                   activeTab === tab ? "tab-active" : "tab-inactive"
                 }`}
               >
-                {tab === "system-health" ? "System Health" : "Traces"}
+                {label}
               </button>
             ))}
           </nav>
@@ -90,10 +92,16 @@ export default function App() {
                   goals={goals}
                   health={health}
                   goalMetrics={goalMetrics}
+                  cronRuns={cronRuns}
+                  teamHealth={teamHealth}
                 />
-              ) : (
-                <TracesView traces={traces} />
-              )}
+              ) : activeTab === "mechanism" ? (
+                <MechanismView
+                  goals={goals}
+                  traces={traces}
+                  cronRuns={cronRuns}
+                />
+              ) : null}
             </motion.div>
           )}
         </AnimatePresence>

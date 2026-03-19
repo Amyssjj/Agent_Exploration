@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oa-cli"
-version = "0.1.0"
+version = "0.1.4"
 description = "Operational analytics for your AI agent team"
 readme = "README.md"
 license = "MIT"
@@ -43,9 +43,9 @@ dev = [
 oa = "oa.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/motusai/oa-cli"
-Repository = "https://github.com/motusai/oa-cli"
-Issues = "https://github.com/motusai/oa-cli/issues"
+Homepage = "https://github.com/Amyssjj/Agent_Exploration/tree/main/CLIs/oa-cli"
+Repository = "https://github.com/Amyssjj/Agent_Exploration"
+Issues = "https://github.com/Amyssjj/Agent_Exploration/issues"
 
 [tool.ruff]
 line-length = 100
@@ -56,3 +56,18 @@ select = ["E", "F", "I", "W"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/oa"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "tests/",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+exclude = [
+    "dashboard-src/",
+    "dashboard-src/node_modules/",
+    "test-project/",
+    ".venv/",
+]
