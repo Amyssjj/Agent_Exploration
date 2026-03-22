@@ -3,6 +3,7 @@ export interface MetricData {
   unit: string;
   healthy: number;
   warning: number;
+  direction: "higher" | "lower";
   trend: number | null;
   date: string | null;
   status: string;
