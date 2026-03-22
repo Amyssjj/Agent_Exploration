@@ -400,7 +400,7 @@ with tracer.span("Data Collection") as span:
 git clone https://github.com/Amyssjj/Agent_Exploration.git
 cd Agent_Exploration/CLIs/oa-cli
 python3 -m pip install --user --break-system-packages -e ".[dev]"
-python3 -m pytest  # 60 tests
+python3 -m pytest  # 61 tests
 ```
 
 On Ubuntu/WSL, `python3 -m venv .venv` may fail unless `python3-venv` (or `python3.12-venv`) is installed first. If you want an isolated venv, install that system package and then use the standard venv flow.
