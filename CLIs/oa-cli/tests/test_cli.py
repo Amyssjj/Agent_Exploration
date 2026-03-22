@@ -5,6 +5,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from oa.cli import main
+from oa.core.schema import create_schema
 
 
 class TestCLI:
@@ -73,6 +74,25 @@ class TestCLI:
                 result = runner.invoke(main, ["serve"])
                 assert result.exit_code == 1
                 assert "config.yaml not found" in result.output
+
+    def test_collect_custom_pipeline(self):
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with runner.isolated_filesystem(temp_dir=tmpdir):
+                Path("data").mkdir()
+                Path("pipelines").mkdir()
+                create_schema("data/monitor.db")
+                Path("pipelines/custom_goal.py").write_text(
+                    "from oa import Pipeline, Metric\n\nclass CustomGoal(Pipeline):\n    goal_id='custom_goal'\n    def collect(self, date, config):\n        return [Metric('score', 42, unit='count')]\n",
+                    encoding="utf-8",
+                )
+                Path("config.yaml").write_text(
+                    "openclaw_home: ~/.openclaw\nworkspace_root: ~/.openclaw/workspace\nmemory_paths:\n  - memory/{date}.md\ndb_path: data/monitor.db\nagents:\n  - id: main\n    name: Main\ngoals:\n  - id: custom_goal\n    name: Custom Goal\n    builtin: false\n    pipeline: pipelines/custom_goal.py\n    metrics:\n      - name: score\n        unit: count\n        healthy: 10\n        warning: 5\n",
+                    encoding="utf-8",
+                )
+                result = runner.invoke(main, ["collect"])
+                assert result.exit_code == 0
+                assert "score: 42 count" in result.output
 
     def test_full_workflow(self):
         """Integration test: init → collect → status."""
