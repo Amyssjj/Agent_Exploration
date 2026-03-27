@@ -7,7 +7,6 @@ or a fallback BeautifulSoup-based approach.
 
 import os
 import json
-import shlex
 import subprocess
 import re
 import tempfile
@@ -145,11 +144,10 @@ class MarkdownConverter:
             
             # Try using npx first in case @tryfabric/martian isn't globally installed
             try:
-                cmd = f"npx -y @tryfabric/martian node {script_path} {shlex.quote(file_arg)}"
+                cmd = ["npx", "-y", "@tryfabric/martian", "node", script_path, file_arg]
                 result = subprocess.run(
-                    cmd, 
-                    shell=True, 
-                    capture_output=True, 
+                    cmd,
+                    capture_output=True,
                     text=True,
                     timeout=30  # 30 seconds timeout
                 )
@@ -162,11 +160,10 @@ class MarkdownConverter:
             
             # Try direct node execution if npx failed
             try:
-                cmd = f"node {script_path} {shlex.quote(file_arg)}"
+                cmd = ["node", script_path, file_arg]
                 result = subprocess.run(
-                    cmd, 
-                    shell=True, 
-                    capture_output=True, 
+                    cmd,
+                    capture_output=True,
                     text=True,
                     timeout=30
                 )
@@ -766,13 +763,12 @@ def clean_markdown_to_notion_blocks(md_content) -> List[Dict[str, Any]]:
         try:
             # Create the command with file argument
             file_arg = f"--file={temp_file}"
-            cmd = f"node {script_path} {shlex.quote(file_arg)}"
+            cmd = ["node", script_path, file_arg]
             
             # Run the command
             result = subprocess.run(
-                cmd, 
-                shell=True, 
-                capture_output=True, 
+                cmd,
+                capture_output=True,
                 text=True,
                 timeout=30
             )
