@@ -53,27 +53,21 @@ const GOAL_METRIC_DEFS: Record<string, GoalMetricsDef> = {
     metrics: [
       {
         name: "Success Rate",
-        definition: "Percentage of cron jobs that ran and completed without error",
-        calculation: "Succeeded ÷ (Total − Skipped) × 100",
-        purpose: "Core reliability signal — are automated tasks running as scheduled?",
+        definition: "Percentage of observed cron runs that completed successfully",
+        calculation: "Succeeded ÷ Total observed runs × 100",
+        purpose: "Core reliability signal — of the runs we saw, how many finished cleanly?",
       },
       {
-        name: "Succeeded",
-        definition: "Cron job ran and completed without error",
-        calculation: "Count of runs with status='ok'",
-        purpose: "Baseline count of healthy executions",
+        name: "Failed Runs",
+        definition: "Cron runs that errored, timed out, or explicitly failed",
+        calculation: "Count of normalized status='failure'",
+        purpose: "Highlights automation that ran but needs fixing",
       },
       {
-        name: "Failed",
-        definition: "Cron job ran but errored (timeout, crash, or exception)",
-        calculation: "Count of runs with status='error'",
-        purpose: "Identifies broken automation requiring fix",
-      },
-      {
-        name: "Missed",
-        definition: "Scheduled time slot with no run attempt recorded",
-        calculation: "Expected slots − Actual runs (within 900s match window)",
-        purpose: "Detects silent failures where crons don't even start",
+        name: "Unknown Runs",
+        definition: "Cron runs with a status OA could not classify as success or failure",
+        calculation: "Count of normalized status='unknown'",
+        purpose: "Flags log formats or runtime outcomes that need investigation",
       },
     ],
   },
@@ -172,6 +166,12 @@ function CronTooltip({ active, payload, label }: {
         <span style={{ fontWeight: 600, color: "#1F2937" }}>Success Rate</span>
         <span style={{ fontWeight: 700, color: "#60A5FA" }}>{successRate}%</span>
       </div>
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: jobs.length > 0 ? "4px" : "0" }}>
+        {typeof data.success === "number" && <span style={{ color: "#059669", fontSize: "10px", fontWeight: 600 }}>success {data.success}</span>}
+        {typeof data.failed === "number" && <span style={{ color: "#DC2626", fontSize: "10px", fontWeight: 600 }}>failed {data.failed}</span>}
+        {typeof data.unknown === "number" && <span style={{ color: "#8B5CF6", fontSize: "10px", fontWeight: 600 }}>unknown {data.unknown}</span>}
+        {typeof data.missed === "number" && data.missed > 0 && <span style={{ color: "#6B7280", fontSize: "10px", fontWeight: 600 }}>missed {data.missed}</span>}
+      </div>
       {jobs.length > 0 && (
         <>
           <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", margin: "4px 0 6px" }} />
@@ -199,18 +199,18 @@ function CronTooltip({ active, payload, label }: {
 
 function CronReliabilityChart({ cronRuns }: { cronRuns: CronRun[] }) {
   // Aggregate by date
-  const byDate = new Map<string, { success: number; failed: number; missed: number; total: number; jobs: Map<string, { success: number; total: number }> }>();
+  const byDate = new Map<string, { success: number; failed: number; unknown: number; missed: number; total: number; jobs: Map<string, { success: number; total: number }> }>();
 
   for (const run of cronRuns) {
     if (!byDate.has(run.date)) {
-      byDate.set(run.date, { success: 0, failed: 0, missed: 0, total: 0, jobs: new Map() });
+      byDate.set(run.date, { success: 0, failed: 0, unknown: 0, missed: 0, total: 0, jobs: new Map() });
     }
     const day = byDate.get(run.date)!;
     day.total++;
     if (run.status === "ok" || run.status === "success") day.success++;
-    else if (run.status === "error" || run.status === "failed") day.failed++;
+    else if (run.status === "error" || run.status === "failed" || run.status === "failure") day.failed++;
     else if (run.status === "missed") day.missed++;
-    else day.success++; // default to success
+    else day.unknown++;
 
     if (!day.jobs.has(run.cron_name)) day.jobs.set(run.cron_name, { success: 0, total: 0 });
     const job = day.jobs.get(run.cron_name)!;
@@ -224,6 +224,7 @@ function CronReliabilityChart({ cronRuns }: { cronRuns: CronRun[] }) {
       dateLabel: formatDate(date),
       success: d.success,
       failed: d.failed,
+      unknown: d.unknown,
       missed: d.missed,
       successRate: d.total > 0 ? Math.round((d.success / d.total) * 100) : 0,
       scheduled: d.total,
@@ -261,6 +262,8 @@ function CronReliabilityChart({ cronRuns }: { cronRuns: CronRun[] }) {
           radius={[0, 0, 0, 0]} name="Succeeded" />
         <Bar yAxisId="count" dataKey="failed" stackId="runs" fill="#F87171" fillOpacity={0.7}
           radius={[0, 0, 0, 0]} name="Failed" />
+        <Bar yAxisId="count" dataKey="unknown" stackId="runs" fill="#8B5CF6" fillOpacity={0.65}
+          radius={[0, 0, 0, 0]} name="Unknown" />
         <Bar yAxisId="count" dataKey="missed" stackId="runs" fill="#D1D5DB" fillOpacity={0.5}
           radius={[2, 2, 0, 0]} name="Missed" />
         <Line yAxisId="rate" type="monotone" dataKey="successRate" stroke="#60A5FA" strokeWidth={2.5}

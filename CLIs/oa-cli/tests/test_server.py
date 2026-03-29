@@ -11,7 +11,7 @@ import pytest
 
 from oa.core.config import AgentConfig, GoalConfig, MetricConfig, ProjectConfig
 from oa.core.schema import create_schema
-from oa.server import OAHandler, serve
+from oa.server import OAHandler, _health_status, serve
 
 PORT = 18456  # single port for all tests
 
@@ -28,13 +28,26 @@ def _setup_project(tmpdir: str) -> str:
         AgentConfig(id="writer", name="Writer"),
     ]
     config.goals = [
-        GoalConfig(id="cron_reliability", name="Cron Reliability", builtin=True,
-                   metrics=[MetricConfig(name="success_rate", unit="%", healthy=95, warning=80)]),
-        GoalConfig(id="team_health", name="Team Health", builtin=True,
-                   metrics=[
-                       MetricConfig(name="active_agent_count", unit="count", healthy=2, warning=1),
-                       MetricConfig(name="memory_discipline", unit="%", healthy=80, warning=50),
-                   ]),
+        GoalConfig(
+            id="cron_reliability",
+            name="Cron Reliability",
+            builtin=True,
+            metrics=[
+                MetricConfig(name="success_rate", unit="%", healthy=95, warning=80, direction="higher"),
+                MetricConfig(name="failed_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                MetricConfig(name="unknown_runs", unit="count", healthy=0, warning=1, direction="lower"),
+            ],
+        ),
+        GoalConfig(
+            id="team_health",
+            name="Team Health",
+            builtin=True,
+            metrics=[
+                MetricConfig(name="active_agent_count", unit="count", healthy=2, warning=1, direction="higher"),
+                MetricConfig(name="inactive_agent_count", unit="count", healthy=0, warning=1, direction="lower"),
+                MetricConfig(name="memory_discipline", unit="%", healthy=80, warning=50, direction="higher"),
+            ],
+        ),
     ]
     config.save(config_path)
     create_schema(db_path)
@@ -46,7 +59,13 @@ def _setup_project(tmpdir: str) -> str:
     db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
                ("2026-03-14", "cron_reliability", "success_rate", 88.0, "%"))
     db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
+               ("2026-03-15", "cron_reliability", "failed_runs", 1, "count"))
+    db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
+               ("2026-03-15", "cron_reliability", "unknown_runs", 0, "count"))
+    db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
                ("2026-03-15", "team_health", "active_agent_count", 2, "count"))
+    db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
+               ("2026-03-15", "team_health", "inactive_agent_count", 0, "count"))
     db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
                ("2026-03-15", "team_health", "memory_discipline", 100, "%"))
     db.execute("INSERT INTO cron_runs (date, cron_name, status, job_id) VALUES (?, ?, ?, ?)",
@@ -103,6 +122,10 @@ class TestServerAPI:
         assert goals[0]["id"] == "cron_reliability"
         assert goals[0]["metrics"]["success_rate"]["value"] == 92.5
         assert goals[0]["metrics"]["success_rate"]["status"] == "warning"  # 92.5 < 95
+        assert goals[0]["metrics"]["failed_runs"]["value"] == 1
+        assert goals[0]["metrics"]["failed_runs"]["status"] == "warning"
+        assert goals[0]["metrics"]["unknown_runs"]["value"] == 0
+        assert goals[0]["metrics"]["unknown_runs"]["status"] == "healthy"
         assert goals[0]["healthStatus"] == "warning"
 
     def test_api_goals_trend(self, server):
@@ -150,11 +173,21 @@ class TestServerAPI:
         cfg = _get("/api/config")
         assert len(cfg["agents"]) == 2
         assert len(cfg["goals"]) == 2
+        cron_metrics = {m["name"]: m for m in cfg["goals"][0]["metrics"]}
+        assert cron_metrics["unknown_runs"]["direction"] == "lower"
 
     def test_api_goal_metrics(self, server):
         metrics = _get("/api/goals/metrics")
         assert "cron_reliability" in metrics
-        assert len(metrics["cron_reliability"]) == 2  # 2 dates
+
+        cron_rows = metrics["cron_reliability"]
+        assert len(cron_rows) == 4
+        assert {(row["date"], row["metric"]) for row in cron_rows} == {
+            ("2026-03-14", "success_rate"),
+            ("2026-03-15", "success_rate"),
+            ("2026-03-15", "failed_runs"),
+            ("2026-03-15", "unknown_runs"),
+        }
 
     def test_static_index(self, server):
         resp = _get_raw("/")

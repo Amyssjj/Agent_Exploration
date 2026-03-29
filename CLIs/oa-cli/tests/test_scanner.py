@@ -81,3 +81,17 @@ class TestScanner:
             scanner = OpenClawScanner(openclaw_home=oc_home)
             result = scanner.scan()
             assert result.session_count == 5
+
+    def test_scan_agents_from_cron_runs_session_key(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            oc_home = Path(tmpdir)
+            runs_dir = oc_home / "cron" / "runs"
+            runs_dir.mkdir(parents=True)
+            (runs_dir / "job-1.jsonl").write_text(
+                json.dumps({"ts": 1742022000000, "sessionKey": "agent:main:cron:job-1:run:abc"}) + "\n"
+            )
+
+            scanner = OpenClawScanner(openclaw_home=oc_home)
+            result = scanner.scan()
+            agent_ids = [a.id for a in result.agents]
+            assert "main" in agent_ids

@@ -59,8 +59,16 @@ function computeOverall(goals: GoalSummary[]): number | null {
     const metrics = Object.values(g.metrics);
     const primary = metrics[0];
     if (!primary || primary.value === null) continue;
-    if (primary.unit === "%") {
+    if (primary.unit === "%" && primary.direction !== "lower") {
       scores.push(Math.min(100, Math.max(0, primary.value)));
+    } else if (primary.direction === "lower") {
+      if (primary.value <= primary.healthy) {
+        scores.push(90);
+      } else if (primary.value <= primary.warning) {
+        scores.push(65);
+      } else {
+        scores.push(40);
+      }
     } else if (primary.value >= primary.healthy) {
       scores.push(90);
     } else if (primary.value >= primary.warning) {
