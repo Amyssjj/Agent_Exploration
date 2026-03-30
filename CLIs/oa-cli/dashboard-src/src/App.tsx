@@ -3,11 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useOAData } from "./hooks/useOAData";
 import { SystemHealth } from "./components/SystemHealth";
 import { MechanismView } from "./components/MechanismView";
+import { useI18n } from "./i18n";
 type Tab = "system-health" | "mechanism";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("system-health");
   const { goals, health, traces, cronRuns, teamHealth, goalMetrics, isLoading, error } = useOAData(30_000);
+  const { lang, setLang, t } = useI18n();
 
   return (
     <div className="min-h-screen">
@@ -16,29 +18,47 @@ export default function App() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-              OA Dashboard
+              {t("app.title")}
             </h1>
             <p className="text-xs text-gray-400 mt-0.5">
-              Is our machine getting better?
+              {t("app.subtitle")}
             </p>
           </div>
 
-          <nav className="flex gap-6">
-            {([
-              ["system-health", "System Health"],
-              ["mechanism", "Mechanism"],
-            ] as [Tab, string][]).map(([tab, label]) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-1 text-sm transition-all ${
-                  activeTab === tab ? "tab-active" : "tab-inactive"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
+          <div className="flex items-center gap-5">
+            <div className="inline-flex rounded-full border border-gray-200 bg-white/70 p-1">
+              {(["zh", "en"] as const).map((nextLang) => (
+                <button
+                  key={nextLang}
+                  onClick={() => setLang(nextLang)}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    lang === nextLang
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-800"
+                  }`}
+                >
+                  {t(`app.lang.${nextLang}`)}
+                </button>
+              ))}
+            </div>
+
+            <nav className="flex gap-6">
+              {([
+                ["system-health", t("app.tabs.systemHealth")],
+                ["mechanism", t("app.tabs.mechanism")],
+              ] as [Tab, string][]).map(([tab, label]) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`pb-1 text-sm transition-all ${
+                    activeTab === tab ? "tab-active" : "tab-inactive"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
 
         {/* Content */}
@@ -59,7 +79,7 @@ export default function App() {
                   style={{ borderTopColor: "#60A5FA" }}
                 />
                 <p className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-mono">
-                  Loading
+                  {t("app.loading")}
                 </p>
               </div>
             </motion.div>
@@ -72,10 +92,10 @@ export default function App() {
               className="flex items-center justify-center py-32"
             >
               <div className="glass-card p-8 max-w-md text-center space-y-3">
-                <p className="text-sm text-gray-600">Connection Error</p>
+                <p className="text-sm text-gray-600">{t("app.connectionError")}</p>
                 <p className="text-xs text-gray-400 font-mono">{error}</p>
                 <p className="text-[10px] text-gray-400">
-                  Ensure the API server is running: <code>oa serve</code>
+                  {t("app.ensureServer")} <code>oa serve</code>
                 </p>
               </div>
             </motion.div>
@@ -114,7 +134,7 @@ export default function App() {
           transition={{ delay: 0.8 }}
         >
           <span className="text-[10px] text-gray-300 font-mono tracking-wider uppercase">
-            OA — Operational Analytics
+            {t("app.footer")}
           </span>
         </motion.div>
       </div>
