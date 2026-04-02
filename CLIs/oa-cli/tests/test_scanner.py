@@ -125,3 +125,20 @@ class TestScanner:
             result = scanner.scan()
             main = next(a for a in result.agents if a.id == "main")
             assert main.last_active is not None
+
+    def test_scan_agents_last_active_prefers_session_contents(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            oc_home = Path(tmpdir)
+            sessions_dir = oc_home / "agents" / "main" / "sessions"
+            sessions_dir.mkdir(parents=True)
+            session_file = sessions_dir / "recent.jsonl"
+            session_file.write_text(
+                json.dumps({"type": "session", "timestamp": "2026-03-15T09:00:00"}) + "\n"
+                + json.dumps({"type": "message", "timestamp": "2026-03-15T10:30:00"}) + "\n",
+                encoding="utf-8",
+            )
+
+            scanner = OpenClawScanner(openclaw_home=oc_home)
+            result = scanner.scan()
+            main = next(a for a in result.agents if a.id == "main")
+            assert main.last_active == "2026-03-15T10:30:00"

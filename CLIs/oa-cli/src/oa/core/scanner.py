@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from .session_data import inspect_session_file
+
 
 @dataclass
 class AgentInfo:
@@ -99,14 +101,14 @@ class OpenClawScanner:
                 self._register_agent(
                     agents,
                     agent_id,
-                    datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
+                    inspect_session_file(path).last_active,
                 )
 
         for agent_id, path in self._iter_agent_session_files():
             self._register_agent(
                 agents,
                 agent_id,
-                datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
+                inspect_session_file(path).last_active,
             )
 
         runs_dir = self.home / "cron" / "runs"

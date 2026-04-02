@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from oa.core.session_data import inspect_session_file
+
 from .base import Metric, Pipeline
 
 if TYPE_CHECKING:
@@ -30,8 +32,7 @@ class TeamHealthPipeline(Pipeline):
 
             with tracer.span("Scan Agent Activity") as scan:
                 for agent in config.agents:
-                    sessions = self._count_agent_sessions(config.openclaw_home, agent.id, date)
-                    last_active = self._last_active_for_agent(config.openclaw_home, agent.id, date)
+                    sessions, last_active = self._session_activity_for_agent(config.openclaw_home, agent.id, date)
                     has_memory = self._check_memory_logged(config, date)
 
                     if sessions > 0:
@@ -82,23 +83,21 @@ class TeamHealthPipeline(Pipeline):
             ),
         ]
 
-    def _count_agent_sessions(self, openclaw_home: Path, agent_id: str, date: str) -> int:
+    def _session_activity_for_agent(self, openclaw_home: Path, agent_id: str, date: str) -> tuple[int, str | None]:
         count = 0
-        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        last_active: str | None = None
 
         for path in self._iter_legacy_agent_session_files(openclaw_home, agent_id):
-            try:
-                if datetime.fromtimestamp(path.stat().st_mtime).date() == target_date:
-                    count += 1
-            except OSError:
-                continue
+            info = inspect_session_file(path)
+            if date in info.activity_dates:
+                count += 1
+                last_active = self._max_iso(last_active, info.latest_by_date.get(date))
 
         for path in self._iter_agent_session_files(openclaw_home, agent_id):
-            try:
-                if datetime.fromtimestamp(path.stat().st_mtime).date() == target_date:
-                    count += 1
-            except OSError:
-                continue
+            info = inspect_session_file(path)
+            if date in info.activity_dates:
+                count += 1
+                last_active = self._max_iso(last_active, info.latest_by_date.get(date))
 
         runs_dir = openclaw_home / "cron" / "runs"
         if runs_dir.exists():
@@ -119,53 +118,11 @@ class TeamHealthPipeline(Pipeline):
                             event_date = self._entry_date(entry)
                             if event_date == date:
                                 count += 1
+                                last_active = self._max_iso(last_active, self._entry_iso(entry))
                 except OSError:
                     continue
 
-        return count
-
-    def _last_active_for_agent(self, openclaw_home: Path, agent_id: str, date: str) -> str | None:
-        timestamps: list[str] = []
-
-        for path in self._iter_legacy_agent_session_files(openclaw_home, agent_id):
-            try:
-                ts = datetime.fromtimestamp(path.stat().st_mtime).isoformat()
-                if ts.startswith(date):
-                    timestamps.append(ts)
-            except OSError:
-                continue
-
-        for path in self._iter_agent_session_files(openclaw_home, agent_id):
-            try:
-                ts = datetime.fromtimestamp(path.stat().st_mtime).isoformat()
-                if ts.startswith(date):
-                    timestamps.append(ts)
-            except OSError:
-                continue
-
-        runs_dir = openclaw_home / "cron" / "runs"
-        if runs_dir.exists():
-            for path in runs_dir.glob("*.jsonl"):
-                try:
-                    with open(path, encoding="utf-8") as f:
-                        for line in f:
-                            line = line.strip()
-                            if not line:
-                                continue
-                            try:
-                                entry = json.loads(line)
-                            except json.JSONDecodeError:
-                                continue
-                            session_key = str(entry.get("sessionKey", ""))
-                            if f"agent:{agent_id}:" not in session_key:
-                                continue
-                            iso_ts = self._entry_iso(entry)
-                            if iso_ts and iso_ts.startswith(date):
-                                timestamps.append(iso_ts)
-                except OSError:
-                    continue
-
-        return max(timestamps) if timestamps else None
+        return count, last_active
 
     def _iter_legacy_agent_session_files(self, openclaw_home: Path, agent_id: str):
         sessions_dir = openclaw_home / "sessions"
@@ -224,6 +181,13 @@ class TeamHealthPipeline(Pipeline):
             if isinstance(value, str) and value:
                 return value
         return None
+
+    def _max_iso(self, current: str | None, candidate: str | None) -> str | None:
+        if not candidate:
+            return current
+        if not current or candidate > current:
+            return candidate
+        return current
 
     def _write_activity(
         self,

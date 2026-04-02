@@ -1,6 +1,7 @@
 """Tests for built-in pipelines."""
 import json
 import os
+import sqlite3
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -204,3 +205,31 @@ class TestTeamHealthPipeline:
             inactive = next(m for m in metrics if m.name == "inactive_agent_count")
             assert active.value >= 1
             assert inactive.value == 1
+
+    def test_with_historical_activity_from_session_contents(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            sessions_dir = config.openclaw_home / "agents" / "main" / "sessions"
+            sessions_dir.mkdir(parents=True)
+            session_file = sessions_dir / "recent.jsonl"
+            session_file.write_text(
+                json.dumps({"type": "session", "timestamp": "2026-03-14T08:00:00"}) + "\n"
+                + json.dumps({"type": "message", "timestamp": "2026-03-14T09:30:00"}) + "\n",
+                encoding="utf-8",
+            )
+            target_ts = datetime(2026, 3, 15, 12, 0, 0).timestamp()
+            os.utime(session_file, (target_ts, target_ts))
+
+            metrics = TeamHealthPipeline().collect("2026-03-14", config)
+            active = next(m for m in metrics if m.name == "active_agent_count")
+            inactive = next(m for m in metrics if m.name == "inactive_agent_count")
+            assert active.value == 1
+            assert inactive.value == 1
+
+            db = sqlite3.connect(str(config.db_path))
+            row = db.execute(
+                "SELECT session_count, last_active FROM daily_agent_activity WHERE date = ? AND agent_id = ?",
+                ("2026-03-14", "main"),
+            ).fetchone()
+            db.close()
+            assert row == (1, "2026-03-14T09:30:00")
