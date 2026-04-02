@@ -3,6 +3,7 @@ import { GoalCard } from "./GoalCard";
 import { GoalDetailSection } from "./GoalDetailSection";
 import { HealthSummaryStrip } from "./HealthSummaryStrip";
 import type { GoalSummary, HealthSummary, CronRun, AgentActivity } from "../types";
+import { useI18n } from "../i18n";
 
 interface Props {
   goals: GoalSummary[];
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function SystemHealth({ goals, health, goalMetrics, cronRuns, teamHealth }: Props) {
+  const { t } = useI18n();
   return (
     <div className="space-y-5">
       {/* Overall Health Strip */}
@@ -42,9 +44,9 @@ export function SystemHealth({ goals, health, goalMetrics, cronRuns, teamHealth 
       {/* No goals state */}
       {goals.length === 0 && (
         <div className="glass-card p-12 text-center">
-          <p className="text-lg font-semibold text-gray-400">No goals configured</p>
+          <p className="text-lg font-semibold text-gray-400">{t("health.noGoals")}</p>
           <p className="text-sm text-gray-300 mt-2">
-            Run <code className="bg-gray-100 px-2 py-0.5 rounded text-xs">oa init</code> to set up goals
+            {t("health.noGoalsHint")} <code className="bg-gray-100 px-2 py-0.5 rounded text-xs">oa init</code>
           </p>
         </div>
       )}
