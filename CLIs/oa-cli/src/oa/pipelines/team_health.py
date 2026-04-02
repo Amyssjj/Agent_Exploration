@@ -85,19 +85,20 @@ class TeamHealthPipeline(Pipeline):
     def _count_agent_sessions(self, openclaw_home: Path, agent_id: str, date: str) -> int:
         count = 0
         target_date = datetime.strptime(date, "%Y-%m-%d").date()
-        sessions_dir = openclaw_home / "sessions"
 
-        if sessions_dir.exists():
-            for path in sessions_dir.iterdir():
-                if not path.is_file():
-                    continue
-                if f"agent:{agent_id}:" not in path.name:
-                    continue
-                try:
-                    if datetime.fromtimestamp(path.stat().st_mtime).date() == target_date:
-                        count += 1
-                except OSError:
-                    continue
+        for path in self._iter_legacy_agent_session_files(openclaw_home, agent_id):
+            try:
+                if datetime.fromtimestamp(path.stat().st_mtime).date() == target_date:
+                    count += 1
+            except OSError:
+                continue
+
+        for path in self._iter_agent_session_files(openclaw_home, agent_id):
+            try:
+                if datetime.fromtimestamp(path.stat().st_mtime).date() == target_date:
+                    count += 1
+            except OSError:
+                continue
 
         runs_dir = openclaw_home / "cron" / "runs"
         if runs_dir.exists():
@@ -125,17 +126,22 @@ class TeamHealthPipeline(Pipeline):
 
     def _last_active_for_agent(self, openclaw_home: Path, agent_id: str, date: str) -> str | None:
         timestamps: list[str] = []
-        sessions_dir = openclaw_home / "sessions"
-        if sessions_dir.exists():
-            for path in sessions_dir.iterdir():
-                if not path.is_file() or f"agent:{agent_id}:" not in path.name:
-                    continue
-                try:
-                    ts = datetime.fromtimestamp(path.stat().st_mtime).isoformat()
-                    if ts.startswith(date):
-                        timestamps.append(ts)
-                except OSError:
-                    continue
+
+        for path in self._iter_legacy_agent_session_files(openclaw_home, agent_id):
+            try:
+                ts = datetime.fromtimestamp(path.stat().st_mtime).isoformat()
+                if ts.startswith(date):
+                    timestamps.append(ts)
+            except OSError:
+                continue
+
+        for path in self._iter_agent_session_files(openclaw_home, agent_id):
+            try:
+                ts = datetime.fromtimestamp(path.stat().st_mtime).isoformat()
+                if ts.startswith(date):
+                    timestamps.append(ts)
+            except OSError:
+                continue
 
         runs_dir = openclaw_home / "cron" / "runs"
         if runs_dir.exists():
@@ -160,6 +166,22 @@ class TeamHealthPipeline(Pipeline):
                     continue
 
         return max(timestamps) if timestamps else None
+
+    def _iter_legacy_agent_session_files(self, openclaw_home: Path, agent_id: str):
+        sessions_dir = openclaw_home / "sessions"
+        if not sessions_dir.exists():
+            return
+        for path in sessions_dir.iterdir():
+            if path.is_file() and f"agent:{agent_id}:" in path.name:
+                yield path
+
+    def _iter_agent_session_files(self, openclaw_home: Path, agent_id: str):
+        sessions_dir = openclaw_home / "agents" / agent_id / "sessions"
+        if not sessions_dir.exists():
+            return
+        for path in sessions_dir.glob("*.jsonl"):
+            if path.is_file():
+                yield path
 
     def _check_memory_logged(self, config: "ProjectConfig", date: str) -> bool:
         workspace_root = config.workspace_root

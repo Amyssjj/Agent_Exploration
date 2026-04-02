@@ -82,6 +82,23 @@ class TestScanner:
             result = scanner.scan()
             assert result.session_count == 5
 
+    def test_scan_sessions_count_from_agent_dirs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            oc_home = Path(tmpdir)
+            main_sessions = oc_home / "agents" / "main" / "sessions"
+            researcher_sessions = oc_home / "agents" / "researcher" / "sessions"
+            main_sessions.mkdir(parents=True)
+            researcher_sessions.mkdir(parents=True)
+
+            (main_sessions / "session-1.jsonl").write_text("{}")
+            (main_sessions / "session-2.jsonl").write_text("{}")
+            (researcher_sessions / "session-3.jsonl").write_text("{}")
+            (main_sessions / "sessions.json").write_text("{}")
+
+            scanner = OpenClawScanner(openclaw_home=oc_home)
+            result = scanner.scan()
+            assert result.session_count == 3
+
     def test_scan_agents_from_cron_runs_session_key(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             oc_home = Path(tmpdir)
@@ -95,3 +112,16 @@ class TestScanner:
             result = scanner.scan()
             agent_ids = [a.id for a in result.agents]
             assert "main" in agent_ids
+
+    def test_scan_agents_last_active_from_agent_session_dirs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            oc_home = Path(tmpdir)
+            sessions_dir = oc_home / "agents" / "main" / "sessions"
+            sessions_dir.mkdir(parents=True)
+            session_file = sessions_dir / "recent.jsonl"
+            session_file.write_text("{}")
+
+            scanner = OpenClawScanner(openclaw_home=oc_home)
+            result = scanner.scan()
+            main = next(a for a in result.agents if a.id == "main")
+            assert main.last_active is not None

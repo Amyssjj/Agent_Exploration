@@ -188,3 +188,19 @@ class TestTeamHealthPipeline:
             assert active.value >= 1
             assert inactive.value == 1
             assert discipline.value == 100.0
+
+    def test_with_active_agent_from_agent_session_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            sessions_dir = config.openclaw_home / "agents" / "main" / "sessions"
+            sessions_dir.mkdir(parents=True)
+            session_file = sessions_dir / "recent.jsonl"
+            session_file.write_text("{}", encoding="utf-8")
+            target_ts = datetime(2026, 3, 15, 9, 0, 0).timestamp()
+            os.utime(session_file, (target_ts, target_ts))
+
+            metrics = TeamHealthPipeline().collect("2026-03-15", config)
+            active = next(m for m in metrics if m.name == "active_agent_count")
+            inactive = next(m for m in metrics if m.name == "inactive_agent_count")
+            assert active.value >= 1
+            assert inactive.value == 1

@@ -93,18 +93,21 @@ class OpenClawScanner:
                 if path.is_dir():
                     self._register_agent(agents, path.name)
 
-        sessions_dir = self.home / "sessions"
-        if sessions_dir.exists():
-            for path in sessions_dir.iterdir():
-                if not path.is_file():
-                    continue
-                agent_id = self._extract_agent_id(path.stem)
-                if agent_id:
-                    self._register_agent(
-                        agents,
-                        agent_id,
-                        datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
-                    )
+        for path in self._iter_legacy_session_files():
+            agent_id = self._extract_agent_id(path.stem)
+            if agent_id:
+                self._register_agent(
+                    agents,
+                    agent_id,
+                    datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
+                )
+
+        for agent_id, path in self._iter_agent_session_files():
+            self._register_agent(
+                agents,
+                agent_id,
+                datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
+            )
 
         runs_dir = self.home / "cron" / "runs"
         if runs_dir.exists():
@@ -130,11 +133,30 @@ class OpenClawScanner:
         return sorted(agents.values(), key=lambda a: a.id)
 
     def _count_sessions(self) -> int:
-        """Count total session files."""
+        """Count total session files across legacy and current layouts."""
+        count = sum(1 for _ in self._iter_legacy_session_files())
+        count += sum(1 for _agent_id, _path in self._iter_agent_session_files())
+        return count
+
+    def _iter_legacy_session_files(self):
         sessions_dir = self.home / "sessions"
         if not sessions_dir.exists():
-            return 0
-        return sum(1 for f in sessions_dir.iterdir() if f.is_file())
+            return
+        for path in sessions_dir.iterdir():
+            if path.is_file():
+                yield path
+
+    def _iter_agent_session_files(self):
+        agents_dir = self.home / "agents"
+        if not agents_dir.exists():
+            return
+        for agent_dir in agents_dir.iterdir():
+            sessions_dir = agent_dir / "sessions"
+            if not agent_dir.is_dir() or not sessions_dir.exists():
+                continue
+            for path in sessions_dir.glob("*.jsonl"):
+                if path.is_file():
+                    yield agent_dir.name, path
 
     def _register_agent(self, agents: dict[str, AgentInfo], agent_id: str, last_active: str | None = None) -> None:
         if not agent_id:
