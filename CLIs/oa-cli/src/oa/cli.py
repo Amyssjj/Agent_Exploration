@@ -355,7 +355,11 @@ def _cron_reliability_summary(metrics) -> str | None:
 
     breakdown = success_metric.breakdown
     total_runs = int(breakdown.get("total_runs") or 0)
-    if total_runs <= 0:
+    expected_slots = int(breakdown.get("expected_slots") or 0)
+    observed_slots = int(breakdown.get("observed_slots") or 0)
+    missed = int(breakdown.get("missed") or 0)
+    unexpected_runs = int(breakdown.get("unexpected_runs") or 0)
+    if total_runs <= 0 and expected_slots <= 0:
         return None
 
     parts: list[str] = []
@@ -375,6 +379,13 @@ def _cron_reliability_summary(metrics) -> str | None:
 
     if not parts:
         parts.append("0 success")
+
+    if expected_slots > 0 or observed_slots > 0 or missed > 0:
+        prefix = f"expected {expected_slots} slots, observed {observed_slots}, missed {missed}"
+        if unexpected_runs:
+            suffix = "run" if unexpected_runs == 1 else "runs"
+            prefix += f", unexpected {unexpected_runs} {suffix}"
+        return prefix + " -> " + ", ".join(parts)
 
     return f"observed {total_runs} runs -> " + ", ".join(parts)
 

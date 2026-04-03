@@ -162,3 +162,60 @@ class TestCLI:
                 result = runner.invoke(main, ["collect", "--date", "2025-03-15"])
                 assert result.exit_code == 0
                 assert "observed 2 runs -> 1 success, 1 timeout" in result.output
+
+    def test_collect_reports_expected_and_missed_cron_slots(self):
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with runner.isolated_filesystem(temp_dir=tmpdir):
+                openclaw_home = Path("openclaw")
+                cron_dir = openclaw_home / "cron"
+                runs_dir = cron_dir / "runs"
+                runs_dir.mkdir(parents=True)
+                Path("data").mkdir()
+                create_schema("data/monitor.db")
+
+                config = ProjectConfig(openclaw_home=openclaw_home, workspace_root=openclaw_home / "workspace", db_path=Path("data/monitor.db"))
+                config.goals = [
+                    GoalConfig(
+                        id="cron_reliability",
+                        name="Cron Reliability",
+                        builtin=True,
+                        metrics=[
+                            MetricConfig(name="success_rate", unit="%", healthy=95, warning=80, direction="higher"),
+                            MetricConfig(name="failed_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                            MetricConfig(name="unknown_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                        ],
+                    )
+                ]
+                config.save("config.yaml")
+
+                (cron_dir / "jobs.json").write_text(json.dumps({
+                    "jobs": [
+                        {
+                            "id": "job-1",
+                            "name": "Job One",
+                            "schedule": {"kind": "cron", "expr": "0 7,12,19 * * *"},
+                            "enabled": True,
+                        }
+                    ]
+                }), encoding="utf-8")
+                (runs_dir / "job-1.jsonl").write_text(
+                    json.dumps({
+                        "startedAt": "2026-03-15T07:00:00",
+                        "jobId": "job-1",
+                        "action": "finished",
+                        "status": "completed",
+                    }) + "\n"
+                    + json.dumps({
+                        "startedAt": "2026-03-15T12:00:00",
+                        "jobId": "job-1",
+                        "action": "finished",
+                        "status": "error",
+                        "error": {"message": "cron: job execution timed out"},
+                    }) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = runner.invoke(main, ["collect", "--date", "2026-03-15"])
+                assert result.exit_code == 0
+                assert "expected 3 slots, observed 2, missed 1 -> 1 success, 1 timeout" in result.output

@@ -178,8 +178,68 @@ class TestCronReliabilityPipeline:
             unknown = next(m for m in metrics if m.name == "unknown_runs")
             assert abs(success.value - 50.0) < 0.1
             assert success.breakdown["mode"] == "scheduled_mode"
+            assert success.breakdown["expected_slots"] == 1
+            assert success.breakdown["observed_slots"] == 1
+            assert success.breakdown["missed"] == 0
+            assert success.breakdown["unexpected_runs"] == 1
+            assert success.breakdown["success_rate_denominator"] == 2
             assert failed.value == 1
             assert unknown.value == 0
+
+            per_job = success.breakdown["per_job"]["Test Job"]
+            assert per_job["expected_slots"] == 1
+            assert per_job["observed_slots"] == 1
+            assert per_job["missed"] == 0
+            assert per_job["unexpected_runs"] == 1
+
+    def test_reports_expected_and_missed_slots_from_jobs_json(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "test-job",
+                        "name": "Test Job",
+                        "schedule": {"kind": "cron", "expr": "0 7,12,19 * * *"},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+            with open(cron_dir / "runs" / "test-job.jsonl", "w", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "startedAt": "2026-03-15T07:00:00",
+                    "action": "finished",
+                    "status": "completed",
+                    "jobId": "test-job",
+                }) + "\n")
+                f.write(json.dumps({
+                    "startedAt": "2026-03-15T12:00:00",
+                    "action": "finished",
+                    "status": "failed",
+                    "jobId": "test-job",
+                }) + "\n")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+
+            assert abs(success.value - 33.3) < 0.1
+            assert success.breakdown["mode"] == "scheduled_mode"
+            assert success.breakdown["expected_slots"] == 3
+            assert success.breakdown["observed_slots"] == 2
+            assert success.breakdown["missed"] == 1
+            assert success.breakdown["unexpected_runs"] == 0
+            assert success.breakdown["success_rate_denominator"] == 3
+            assert success.breakdown["missed_slots"] == [
+                {"cron_name": "Test Job", "job_id": "test-job", "slot_time": "19:00:00"}
+            ]
+
+            per_job = success.breakdown["per_job"]["Test Job"]
+            assert per_job["expected_slots"] == 3
+            assert per_job["observed_slots"] == 2
+            assert per_job["missed"] == 1
+            assert per_job["missed_slot_times"] == ["19:00:00"]
 
     def test_unknown_statuses_are_counted_separately(self):
         with tempfile.TemporaryDirectory() as tmpdir:
