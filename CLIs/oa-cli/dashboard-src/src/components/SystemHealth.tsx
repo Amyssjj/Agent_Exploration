@@ -2,12 +2,12 @@ import { motion } from "framer-motion";
 import { GoalCard } from "./GoalCard";
 import { GoalDetailSection } from "./GoalDetailSection";
 import { HealthSummaryStrip } from "./HealthSummaryStrip";
-import type { GoalSummary, HealthSummary, CronRun, AgentActivity } from "../types";
+import type { GoalSummary, HealthSummary, CronRun, AgentActivity, GoalMetricHistoryEntry } from "../types";
 
 interface Props {
   goals: GoalSummary[];
   health: HealthSummary | null;
-  goalMetrics: Record<string, unknown[]>;
+  goalMetrics: Record<string, GoalMetricHistoryEntry[]>;
   cronRuns: CronRun[];
   teamHealth: AgentActivity[];
 }

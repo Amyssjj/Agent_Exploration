@@ -64,9 +64,24 @@ def _setup_project(tmpdir: str) -> str:
                        "unexpected_runs": 1,
                        "exact_matches": 10,
                        "late_matches": 1,
+                       "missed_slots": [
+                           {"cron_name": "Daily Job", "job_id": "job-1", "slot_time": "19:00:00"},
+                       ],
+                       "unsupported_schedules": [
+                           {
+                               "job_id": "job-fast",
+                               "cron_name": "Fast Job",
+                               "schedule_kind": "every",
+                               "expr": None,
+                               "reason": "every schedule under 60000ms not supported at current minute slot precision",
+                           }
+                       ],
                        "late_tolerance_minutes": 5,
+                       "success_rate_denominator": 12,
                        "slot_matching_policy": "one-to-one per job: exact minute first; otherwise match a single unmatched expected slot up to 5 minutes earlier; early runs never match future slots; ambiguous late runs stay unexpected",
                        "no_anchor_every_policy": "schedule.kind=every without anchorMs is treated as anchorMs=0, so slots use the Unix epoch phase in local wall-clock time at minute precision",
+                       "unanchored_every_jobs": [{"cron_name": "Epoch Daily", "job_id": "job-epoch"}],
+                       "note": "expected-slot reasoning enabled from jobs.json schedules; sample note",
                    }),
                ))
     db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
@@ -142,6 +157,12 @@ class TestServerAPI:
         assert goals[0]["metrics"]["success_rate"]["value"] == 92.5
         assert goals[0]["metrics"]["success_rate"]["breakdown"]["late_matches"] == 1
         assert goals[0]["metrics"]["success_rate"]["breakdown"]["expected_slots"] == 12
+        assert goals[0]["metrics"]["success_rate"]["breakdown"]["missed_slots"] == [
+            {"cron_name": "Daily Job", "job_id": "job-1", "slot_time": "19:00:00"}
+        ]
+        assert goals[0]["metrics"]["success_rate"]["breakdown"]["unsupported_schedules"][0]["cron_name"] == "Fast Job"
+        assert goals[0]["metrics"]["success_rate"]["breakdown"]["slot_matching_policy"].startswith("one-to-one per job")
+        assert goals[0]["metrics"]["success_rate"]["breakdown"]["no_anchor_every_policy"].startswith("schedule.kind=every without anchorMs")
         assert goals[0]["metrics"]["success_rate"]["status"] == "warning"  # 92.5 < 95
         assert goals[0]["metrics"]["failed_runs"]["value"] == 1
         assert goals[0]["metrics"]["failed_runs"]["status"] == "warning"
@@ -217,6 +238,16 @@ class TestServerAPI:
         assert success_row["breakdown"]["exact_matches"] == 10
         assert success_row["breakdown"]["late_matches"] == 1
         assert success_row["breakdown"]["late_tolerance_minutes"] == 5
+        assert success_row["breakdown"]["success_rate_denominator"] == 12
+        assert success_row["breakdown"]["missed_slots"] == [
+            {"cron_name": "Daily Job", "job_id": "job-1", "slot_time": "19:00:00"}
+        ]
+        assert success_row["breakdown"]["unsupported_schedules"][0]["reason"] == (
+            "every schedule under 60000ms not supported at current minute slot precision"
+        )
+        assert success_row["breakdown"]["unanchored_every_jobs"] == [
+            {"cron_name": "Epoch Daily", "job_id": "job-epoch"}
+        ]
 
     def test_static_index(self, server):
         status, headers, body = _get_raw(server, "/")

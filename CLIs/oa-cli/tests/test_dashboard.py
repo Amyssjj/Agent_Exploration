@@ -44,3 +44,10 @@ class TestDashboardFiles:
             content = f.read_text().lower()
             for term in private_terms:
                 assert term not in content, f"Private term '{term}' found in {f.name}"
+
+    def test_cron_breakdown_labels_exist_in_bundle(self):
+        bundle = "\n".join(f.read_text() for f in (DASHBOARD_DIR / "assets").glob("*.js"))
+        assert "Expected Slots" in bundle
+        assert "Observed Slots" in bundle
+        assert "Unsupported Schedules" in bundle
+        assert "Slot Matching Policy" in bundle

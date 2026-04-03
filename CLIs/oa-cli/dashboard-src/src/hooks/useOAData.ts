@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import type { GoalSummary, HealthSummary, TraceSpan, CronRun, AgentActivity } from "../types";
+import type {
+  GoalSummary,
+  HealthSummary,
+  TraceSpan,
+  CronRun,
+  AgentActivity,
+  GoalMetricHistoryEntry,
+} from "../types";
 
 interface OAData {
   goals: GoalSummary[];
@@ -7,7 +14,7 @@ interface OAData {
   traces: TraceSpan[];
   cronRuns: CronRun[];
   teamHealth: AgentActivity[];
-  goalMetrics: Record<string, unknown[]>;
+  goalMetrics: Record<string, GoalMetricHistoryEntry[]>;
   isLoading: boolean;
   error: string | null;
 }
@@ -24,7 +31,7 @@ export function useOAData(refreshMs: number = 30000): OAData {
   const [traces, setTraces] = useState<TraceSpan[]>([]);
   const [cronRuns, setCronRuns] = useState<CronRun[]>([]);
   const [teamHealth, setTeamHealth] = useState<AgentActivity[]>([]);
-  const [goalMetrics, setGoalMetrics] = useState<Record<string, unknown[]>>({});
+  const [goalMetrics, setGoalMetrics] = useState<Record<string, GoalMetricHistoryEntry[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +43,7 @@ export function useOAData(refreshMs: number = 30000): OAData {
         fetchJSON<TraceSpan[]>("/api/traces"),
         fetchJSON<CronRun[]>("/api/cron-chart"),
         fetchJSON<AgentActivity[]>("/api/team-health"),
-        fetchJSON<Record<string, unknown[]>>("/api/goals/metrics"),
+        fetchJSON<Record<string, GoalMetricHistoryEntry[]>>("/api/goals/metrics"),
       ]);
       setGoals(g);
       setHealth(h);
