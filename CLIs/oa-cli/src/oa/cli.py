@@ -106,6 +106,7 @@ def init(name: str, yes: bool):
 def collect(goal: str | None, date: str | None, config_path: str):
     """Run data collection pipelines."""
     from .core.config import ProjectConfig
+    from .core.schema import create_schema
     from .pipelines.cron_reliability import CronReliabilityPipeline
     from .pipelines.team_health import TeamHealthPipeline
 
@@ -116,6 +117,7 @@ def collect(goal: str | None, date: str | None, config_path: str):
 
     config = ProjectConfig.load(config_file)
     date_str = date or datetime.now().strftime("%Y-%m-%d")
+    create_schema(config.db_path)
 
     console.print(f"\n[bright_magenta]📊 Collecting data for {date_str}...[/]\n")
 
@@ -158,6 +160,10 @@ def collect(goal: str | None, date: str | None, config_path: str):
                 )
                 sep = " " if m.unit and not m.unit.startswith("%") else ""
                 console.print(f"    [green]✓[/] {m.name}: {m.value}{sep}{m.unit}")
+            if goal_config.id == "cron_reliability":
+                summary = _cron_reliability_summary(metrics)
+                if summary:
+                    console.print(f"    [dim]{summary}[/]")
             db.commit()
             db.close()
         except Exception as e:
@@ -340,6 +346,37 @@ def _goal_description(goal_id: str) -> str:
         "team_health": "daily execution activity and workspace memory discipline",
     }
     return descriptions.get(goal_id, "")
+
+
+def _cron_reliability_summary(metrics) -> str | None:
+    success_metric = next((m for m in metrics if m.name == "success_rate"), None)
+    if not success_metric or not success_metric.breakdown:
+        return None
+
+    breakdown = success_metric.breakdown
+    total_runs = int(breakdown.get("total_runs") or 0)
+    if total_runs <= 0:
+        return None
+
+    parts: list[str] = []
+    success = int(breakdown.get("success") or 0)
+    if success:
+        parts.append(f"{success} success")
+
+    failure_types = breakdown.get("failure_types") or {}
+    for name in ("timeout", "delivery_error", "failure"):
+        count = int(failure_types.get(name) or 0)
+        if count:
+            parts.append(f"{count} {name}")
+
+    unknown = int(breakdown.get("unknown") or 0)
+    if unknown:
+        parts.append(f"{unknown} unknown")
+
+    if not parts:
+        parts.append("0 success")
+
+    return f"observed {total_runs} runs -> " + ", ".join(parts)
 
 
 def _relative_time(iso_timestamp: str | None) -> str:

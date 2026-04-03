@@ -195,10 +195,15 @@ class OAHandler(SimpleHTTPRequestHandler):
         db = self._get_db()
         days = int(params.get("days", [30])[0])
         rows = db.execute(
-            "SELECT date, cron_name, status, job_id, run_at_ms, duration_ms, delivery_status FROM cron_runs WHERE date >= date('now', ?) ORDER BY date ASC",
+            "SELECT date, cron_name, status, job_id, run_at_ms, duration_ms, delivery_status, error FROM cron_runs WHERE date >= date('now', ?) ORDER BY date ASC",
             (f"-{days} days",),
         ).fetchall()
-        result = [dict(r) for r in rows]
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["status_detail"] = item["status"]
+            item["status"] = _cron_status_group(item["status_detail"])
+            result.append(item)
         db.close()
         return result
 
@@ -267,6 +272,15 @@ def _health_status(value: float | None, healthy: float, warning: float, directio
     if value >= warning:
         return "warning"
     return "critical"
+
+
+def _cron_status_group(status: str | None) -> str:
+    token = str(status or "unknown").strip().lower().replace("-", "_").replace(" ", "_")
+    if token in {"ok", "completed", "success", "succeeded"}:
+        return "success"
+    if token in {"error", "failed", "failure", "timeout", "timed_out", "delivery_error"}:
+        return "failure"
+    return "unknown"
 
 
 def _get_last_collected(db: sqlite3.Connection) -> str | None:

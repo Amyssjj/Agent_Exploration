@@ -1,10 +1,12 @@
 """Tests for CLI commands."""
+import json
 import tempfile
 from pathlib import Path
 
 from click.testing import CliRunner
 
 from oa.cli import main
+from oa.core.config import GoalConfig, MetricConfig, ProjectConfig
 from oa.core.schema import create_schema
 
 
@@ -111,3 +113,52 @@ class TestCLI:
                 # Status
                 result = runner.invoke(main, ["status", "--config", "workflow-test/config.yaml"])
                 assert result.exit_code == 0
+
+    def test_collect_reports_detailed_cron_failures(self):
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with runner.isolated_filesystem(temp_dir=tmpdir):
+                openclaw_home = Path("openclaw")
+                runs_dir = openclaw_home / "cron" / "runs"
+                runs_dir.mkdir(parents=True)
+                Path("data").mkdir()
+                create_schema("data/monitor.db")
+
+                config = ProjectConfig(openclaw_home=openclaw_home, workspace_root=openclaw_home / "workspace", db_path=Path("data/monitor.db"))
+                config.goals = [
+                    GoalConfig(
+                        id="cron_reliability",
+                        name="Cron Reliability",
+                        builtin=True,
+                        metrics=[
+                            MetricConfig(name="success_rate", unit="%", healthy=95, warning=80, direction="higher"),
+                            MetricConfig(name="failed_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                            MetricConfig(name="unknown_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                        ],
+                    )
+                ]
+                config.save("config.yaml")
+
+                (runs_dir / "job-1.jsonl").write_text(
+                    json.dumps({
+                        "ts": 1742022000000,
+                        "jobId": "job-1",
+                        "action": "finished",
+                        "status": "ok",
+                        "runAtMs": 1742022000000,
+                        "deliveryStatus": "not-delivered",
+                    }) + "\n"
+                    + json.dumps({
+                        "ts": 1742025600000,
+                        "jobId": "job-1",
+                        "action": "finished",
+                        "status": "error",
+                        "error": {"message": "cron: job execution timed out"},
+                        "runAtMs": 1742025600000,
+                    }) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = runner.invoke(main, ["collect", "--date", "2025-03-15"])
+                assert result.exit_code == 0
+                assert "observed 2 runs -> 1 success, 1 timeout" in result.output

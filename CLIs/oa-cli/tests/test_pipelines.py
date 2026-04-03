@@ -92,7 +92,7 @@ class TestCronReliabilityPipeline:
                     "jobId": "job-1",
                     "action": "finished",
                     "status": "error",
-                    "error": "cron: job execution timed out",
+                    "error": {"message": "cron: job execution timed out"},
                     "sessionKey": "agent:main:cron:job-1:run:def",
                     "runAtMs": 1742025600000,
                     "durationMs": 7000,
@@ -102,11 +102,57 @@ class TestCronReliabilityPipeline:
             success = next(m for m in metrics if m.name == "success_rate")
             failed = next(m for m in metrics if m.name == "failed_runs")
             unknown = next(m for m in metrics if m.name == "unknown_runs")
-            assert abs(success.value - 50.0) < 0.1
+            assert success.value == 50.0
             assert success.breakdown["mode"] == "observed_only"
             assert success.breakdown["failed"] == 1
+            assert success.breakdown["failure_types"] == {"timeout": 1}
+            assert success.breakdown["status_details"] == {"success": 1, "timeout": 1}
             assert failed.value == 1
             assert unknown.value == 0
+
+            db = sqlite3.connect(str(config.db_path))
+            rows = db.execute(
+                "SELECT status, error, delivery_status FROM cron_runs ORDER BY run_at_ms ASC"
+            ).fetchall()
+            db.close()
+            assert rows == [
+                ("success", None, "not-delivered"),
+                ("timeout", '{"message": "cron: job execution timed out"}', None),
+            ]
+
+    def test_classifies_delivery_errors_from_error_text(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            runs_dir = config.openclaw_home / "cron" / "runs"
+            with open(runs_dir / "job-1.jsonl", "w", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "ts": 1742022000000,
+                    "jobId": "job-1",
+                    "action": "finished",
+                    "status": "error",
+                    "error": "Delivering to QQ Bot requires target QQ Bot 目标格式: qqbot:c2c:openid (私聊) 或 qqbot:group:groupid (群聊)",
+                    "deliveryStatus": "unknown",
+                    "runAtMs": 1742022000000,
+                }) + "\n")
+
+            metrics = CronReliabilityPipeline().collect("2025-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+            failed = next(m for m in metrics if m.name == "failed_runs")
+            assert success.value == 0.0
+            assert success.breakdown["failure_types"] == {"delivery_error": 1}
+            assert success.breakdown["status_details"] == {"delivery_error": 1}
+            assert failed.value == 1
+
+            db = sqlite3.connect(str(config.db_path))
+            row = db.execute(
+                "SELECT status, error, delivery_status FROM cron_runs ORDER BY run_at_ms ASC"
+            ).fetchone()
+            db.close()
+            assert row == (
+                "delivery_error",
+                "Delivering to QQ Bot requires target QQ Bot 目标格式: qqbot:c2c:openid (私聊) 或 qqbot:group:groupid (群聊)",
+                "unknown",
+            )
 
     def test_with_jobs_json_and_runs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
