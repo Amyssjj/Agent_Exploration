@@ -50,8 +50,25 @@ def _setup_project(tmpdir: str) -> str:
 
     # Insert test data
     db = sqlite3.connect(str(db_path))
-    db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
-               ("2026-03-15", "cron_reliability", "success_rate", 92.5, "%"))
+    db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit, breakdown) VALUES (?, ?, ?, ?, ?, ?)",
+               (
+                   "2026-03-15",
+                   "cron_reliability",
+                   "success_rate",
+                   92.5,
+                   "%",
+                   json.dumps({
+                       "expected_slots": 12,
+                       "observed_slots": 11,
+                       "missed": 1,
+                       "unexpected_runs": 1,
+                       "exact_matches": 10,
+                       "late_matches": 1,
+                       "late_tolerance_minutes": 5,
+                       "slot_matching_policy": "one-to-one per job: exact minute first; otherwise match a single unmatched expected slot up to 5 minutes earlier; early runs never match future slots; ambiguous late runs stay unexpected",
+                       "no_anchor_every_policy": "schedule.kind=every without anchorMs is treated as anchorMs=0, so slots use the Unix epoch phase in local wall-clock time at minute precision",
+                   }),
+               ))
     db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
                ("2026-03-14", "cron_reliability", "success_rate", 88.0, "%"))
     db.execute("INSERT INTO goal_metrics (date, goal, metric, value, unit) VALUES (?, ?, ?, ?, ?)",
@@ -123,6 +140,8 @@ class TestServerAPI:
         assert len(goals) == 2
         assert goals[0]["id"] == "cron_reliability"
         assert goals[0]["metrics"]["success_rate"]["value"] == 92.5
+        assert goals[0]["metrics"]["success_rate"]["breakdown"]["late_matches"] == 1
+        assert goals[0]["metrics"]["success_rate"]["breakdown"]["expected_slots"] == 12
         assert goals[0]["metrics"]["success_rate"]["status"] == "warning"  # 92.5 < 95
         assert goals[0]["metrics"]["failed_runs"]["value"] == 1
         assert goals[0]["metrics"]["failed_runs"]["status"] == "warning"
@@ -192,6 +211,12 @@ class TestServerAPI:
             ("2026-03-15", "failed_runs"),
             ("2026-03-15", "unknown_runs"),
         }
+        success_row = next(row for row in cron_rows if row["date"] == "2026-03-15" and row["metric"] == "success_rate")
+        assert success_row["breakdown"]["expected_slots"] == 12
+        assert success_row["breakdown"]["observed_slots"] == 11
+        assert success_row["breakdown"]["exact_matches"] == 10
+        assert success_row["breakdown"]["late_matches"] == 1
+        assert success_row["breakdown"]["late_tolerance_minutes"] == 5
 
     def test_static_index(self, server):
         status, headers, body = _get_raw(server, "/")

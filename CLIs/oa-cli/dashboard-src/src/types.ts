@@ -6,6 +6,7 @@ export interface MetricData {
   direction: "higher" | "lower";
   trend: number | null;
   date: string | null;
+  breakdown?: Record<string, unknown> | null;
   status: string;
 }
 

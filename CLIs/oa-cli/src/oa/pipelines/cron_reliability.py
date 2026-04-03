@@ -18,6 +18,8 @@ class CronReliabilityPipeline(Pipeline):
     """Built-in pipeline: reads OpenClaw cron JSONL logs and computes success rates."""
 
     goal_id = "cron_reliability"
+    _LATE_MATCH_TOLERANCE_MINUTES = 5
+    _LATE_MATCH_TOLERANCE = timedelta(minutes=_LATE_MATCH_TOLERANCE_MINUTES)
     _STATUS_ORDER = ("success", "timeout", "delivery_error", "failure", "unknown")
     _CRON_MACROS = {
         "@yearly": "0 0 1 1 *",
@@ -104,10 +106,13 @@ class CronReliabilityPipeline(Pipeline):
                         "avg_duration_ms": avg_duration,
                         "expected_slots": int(schedule_job.get("expected_slots") or 0),
                         "observed_slots": int(schedule_job.get("observed_slots") or 0),
+                        "exact_matches": int(schedule_job.get("exact_matches") or 0),
+                        "late_matches": int(schedule_job.get("late_matches") or 0),
                         "missed": int(schedule_job.get("missed") or 0),
                         "missed_slot_times": list(schedule_job.get("missed_slot_times") or []),
                         "unexpected_runs": int(schedule_job.get("unexpected_runs") or 0),
                         "supported_schedule": bool(schedule_job.get("supported_schedule")),
+                        "phase_policy": schedule_job.get("phase_policy"),
                     }
                     total_runs += total
                     total_success += success
@@ -160,11 +165,17 @@ class CronReliabilityPipeline(Pipeline):
                     "unknown": total_unknown,
                     "expected_slots": schedule_summary["expected_slots"],
                     "observed_slots": schedule_summary["observed_slots"],
+                    "exact_matches": schedule_summary["exact_matches"],
+                    "late_matches": schedule_summary["late_matches"],
                     "missed": schedule_summary["missed"],
                     "missed_slots": schedule_summary["missed_slots"],
                     "unexpected_runs": schedule_summary["unexpected_runs"],
                     "unsupported_schedules": schedule_summary["unsupported_schedules"],
                     "success_rate_denominator": success_rate_denominator,
+                    "late_tolerance_minutes": self._LATE_MATCH_TOLERANCE_MINUTES,
+                    "slot_matching_policy": self._slot_matching_policy(),
+                    "no_anchor_every_policy": self._no_anchor_every_policy(),
+                    "unanchored_every_jobs": schedule_summary["unanchored_every_jobs"],
                     "status_details": detail_counts,
                     "failure_types": failure_types,
                     "note": schedule_summary["note"],
@@ -232,10 +243,13 @@ class CronReliabilityPipeline(Pipeline):
         summary: dict[str, Any] = {
             "expected_slots": 0,
             "observed_slots": 0,
+            "exact_matches": 0,
+            "late_matches": 0,
             "missed": 0,
             "missed_slots": [],
             "unexpected_runs": 0,
             "unsupported_schedules": [],
+            "unanchored_every_jobs": [],
             "per_job": {},
             "supported_jobs": 0,
             "note": "jobs.json empty or no enabled cron jobs; using observed runs only",
@@ -250,10 +264,13 @@ class CronReliabilityPipeline(Pipeline):
             job_summary = {
                 "expected_slots": 0,
                 "observed_slots": 0,
+                "exact_matches": 0,
+                "late_matches": 0,
                 "missed": 0,
                 "missed_slot_times": [],
                 "unexpected_runs": 0,
                 "supported_schedule": False,
+                "phase_policy": None,
             }
 
             if expected_slots is None:
@@ -271,20 +288,20 @@ class CronReliabilityPipeline(Pipeline):
             summary["supported_jobs"] += 1
             job_summary["supported_schedule"] = True
             job_summary["expected_slots"] = len(expected_slots)
+            if self._uses_unanchored_every(job_meta):
+                job_summary["phase_policy"] = self._no_anchor_every_policy()
+                summary["unanchored_every_jobs"].append({"cron_name": job_name, "job_id": job_id})
             expected_keys = [self._slot_key(slot) for slot in expected_slots]
             expected_by_key = {self._slot_key(slot): slot for slot in expected_slots}
-            observed_keys: set[str] = set()
-            unexpected_runs = 0
-            for run in runs:
-                observed_key = run.get("observed_slot_key")
-                if observed_key and observed_key in expected_by_key:
-                    observed_keys.add(observed_key)
-                else:
-                    unexpected_runs += 1
+            match_summary = self._match_runs_to_expected_slots(runs, expected_slots, expected_by_key)
+            observed_keys = match_summary["matched_keys"]
+            unexpected_runs = match_summary["unexpected_runs"]
 
             missed_keys = [key for key in expected_keys if key not in observed_keys]
             missed_slot_times = [self._slot_label(expected_by_key[key]) for key in missed_keys]
             job_summary["observed_slots"] = len(observed_keys)
+            job_summary["exact_matches"] = match_summary["exact_matches"]
+            job_summary["late_matches"] = match_summary["late_matches"]
             job_summary["missed"] = len(missed_keys)
             job_summary["missed_slot_times"] = missed_slot_times
             job_summary["unexpected_runs"] = unexpected_runs
@@ -292,6 +309,8 @@ class CronReliabilityPipeline(Pipeline):
 
             summary["expected_slots"] += len(expected_slots)
             summary["observed_slots"] += len(observed_keys)
+            summary["exact_matches"] += match_summary["exact_matches"]
+            summary["late_matches"] += match_summary["late_matches"]
             summary["missed"] += len(missed_keys)
             summary["unexpected_runs"] += unexpected_runs
             summary["missed_slots"].extend(
@@ -299,14 +318,25 @@ class CronReliabilityPipeline(Pipeline):
                 for slot_time in missed_slot_times
             )
 
+        policy_notes = [self._slot_matching_policy_note()]
+        if summary["unanchored_every_jobs"]:
+            policy_notes.append(self._no_anchor_every_policy_note())
+        policy_text = "; ".join(policy_notes)
+
         if summary["supported_jobs"] == 0:
             summary["note"] = "expected-slot reasoning currently supports cron schedules and every schedules >=60s; using observed runs only"
         elif summary["unsupported_schedules"]:
-            summary["note"] = "expected-slot reasoning enabled for supported cron/every schedules; unsupported schedules are listed separately"
+            summary["note"] = (
+                "expected-slot reasoning enabled for supported cron/every schedules; "
+                f"{policy_text}; unsupported schedules are listed separately"
+            )
         elif summary["expected_slots"] == 0:
-            summary["note"] = "expected-slot reasoning enabled; no slots were scheduled for this date"
+            summary["note"] = f"expected-slot reasoning enabled; {policy_text}; no slots were scheduled for this date"
         else:
-            summary["note"] = "expected-slot reasoning enabled from jobs.json schedules"
+            summary["note"] = (
+                "expected-slot reasoning enabled from jobs.json schedules; "
+                f"{policy_text}"
+            )
         return summary
 
     def _expected_slots_for_job(self, date: str, job_meta: dict[str, Any]) -> tuple[list[datetime] | None, str | None]:
@@ -332,6 +362,7 @@ class CronReliabilityPipeline(Pipeline):
             return None, "every schedule under 60000ms not supported at current minute slot precision"
 
         if anchor_ms is None:
+            # Keep a stable phase for unanchored every schedules by treating them as anchorMs=0.
             raw_anchor_ms = 0
         else:
             raw_anchor_ms = self._safe_int(anchor_ms)
@@ -491,6 +522,94 @@ class CronReliabilityPipeline(Pipeline):
     def _slot_label(self, value: datetime) -> str:
         return value.strftime("%H:%M:%S")
 
+    def _slot_matching_policy(self) -> str:
+        return (
+            "one-to-one per job: exact minute first; otherwise match a single unmatched expected slot up to "
+            f"{self._LATE_MATCH_TOLERANCE_MINUTES} minutes earlier; early runs never match future slots; "
+            "ambiguous late runs stay unexpected"
+        )
+
+    def _slot_matching_policy_note(self) -> str:
+        return f"exact minute matches first, then up to {self._LATE_MATCH_TOLERANCE_MINUTES} minutes late tolerance for unique matches"
+
+    def _no_anchor_every_policy(self) -> str:
+        return (
+            "schedule.kind=every without anchorMs is treated as anchorMs=0, "
+            "so slots use the Unix epoch phase in local wall-clock time at minute precision"
+        )
+
+    def _no_anchor_every_policy_note(self) -> str:
+        return "missing every anchorMs uses Unix epoch phase (anchorMs=0)"
+
+    def _uses_unanchored_every(self, job_meta: dict[str, Any]) -> bool:
+        schedule_kind = str(job_meta.get("schedule_kind") or "unknown").lower()
+        schedule = job_meta.get("schedule") or {}
+        return schedule_kind == "every" and schedule.get("anchorMs") is None
+
+    def _match_runs_to_expected_slots(
+        self,
+        runs: list[dict[str, Any]],
+        expected_slots: list[datetime],
+        expected_by_key: dict[str, datetime],
+    ) -> dict[str, Any]:
+        matched_keys: set[str] = set()
+        match_summary = {
+            "matched_keys": matched_keys,
+            "unexpected_runs": 0,
+            "exact_matches": 0,
+            "late_matches": 0,
+        }
+
+        for run in sorted(runs, key=self._run_match_sort_key):
+            matched_key, match_type = self._match_run_to_expected_slot(run, expected_slots, expected_by_key, matched_keys)
+            if matched_key is None:
+                match_summary["unexpected_runs"] += 1
+                continue
+            matched_keys.add(matched_key)
+            if match_type == "exact":
+                match_summary["exact_matches"] += 1
+            elif match_type == "late":
+                match_summary["late_matches"] += 1
+
+        return match_summary
+
+    def _run_match_sort_key(self, run: dict[str, Any]) -> tuple[Any, ...]:
+        observed_dt = run.get("observed_slot_dt")
+        return (
+            observed_dt is None,
+            observed_dt or datetime.max,
+            run.get("run_at_ms") if run.get("run_at_ms") is not None else float("inf"),
+            run.get("slot_time") or "",
+            run.get("run_id") or "",
+        )
+
+    def _match_run_to_expected_slot(
+        self,
+        run: dict[str, Any],
+        expected_slots: list[datetime],
+        expected_by_key: dict[str, datetime],
+        matched_keys: set[str],
+    ) -> tuple[str | None, str | None]:
+        observed_key = run.get("observed_slot_key")
+        if observed_key and observed_key in expected_by_key:
+            if observed_key in matched_keys:
+                return None, None
+            return observed_key, "exact"
+
+        observed_dt = run.get("observed_slot_dt")
+        if not isinstance(observed_dt, datetime):
+            return None, None
+
+        late_window_start = observed_dt - self._LATE_MATCH_TOLERANCE
+        late_candidates = [
+            self._slot_key(slot)
+            for slot in expected_slots
+            if late_window_start <= slot < observed_dt and self._slot_key(slot) not in matched_keys
+        ]
+        if len(late_candidates) != 1:
+            return None, None
+        return late_candidates[0], "late"
+
     def _collect_runs(self, runs_dir: Path, date: str, enabled_jobs: dict[str, dict]) -> dict[str, dict[str, Any]]:
         runs_by_job: dict[str, dict[str, Any]] = {}
         if not runs_dir.exists():
@@ -550,12 +669,14 @@ class CronReliabilityPipeline(Pipeline):
         usage = entry.get("usage") or {}
         run_at_ms = entry.get("runAtMs") if isinstance(entry.get("runAtMs"), (int, float)) else None
         duration_ms = entry.get("durationMs") if isinstance(entry.get("durationMs"), (int, float)) else None
+        observed_slot_dt = self._entry_slot_datetime(entry)
 
         return {
             "date": date,
             "cron_name": job_meta.get("name", job_id),
             "slot_time": self._slot_time(entry),
-            "observed_slot_key": self._observed_slot_key(entry),
+            "observed_slot_key": self._slot_key(observed_slot_dt) if observed_slot_dt is not None else None,
+            "observed_slot_dt": observed_slot_dt,
             "status": detailed_status,
             "normalized_status": normalized_status,
             "job_id": job_id,

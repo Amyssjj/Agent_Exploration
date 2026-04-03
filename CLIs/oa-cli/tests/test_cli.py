@@ -1,4 +1,5 @@
 """Tests for CLI commands."""
+from datetime import datetime
 import json
 import tempfile
 from pathlib import Path
@@ -219,3 +220,91 @@ class TestCLI:
                 result = runner.invoke(main, ["collect", "--date", "2026-03-15"])
                 assert result.exit_code == 0
                 assert "expected 3 slots, observed 2, missed 1 -> 1 success, 1 timeout" in result.output
+
+    def test_collect_reports_late_slot_matches_in_summary(self):
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with runner.isolated_filesystem(temp_dir=tmpdir):
+                openclaw_home = Path("openclaw")
+                cron_dir = openclaw_home / "cron"
+                runs_dir = cron_dir / "runs"
+                runs_dir.mkdir(parents=True)
+                Path("data").mkdir()
+                create_schema("data/monitor.db")
+
+                config = ProjectConfig(openclaw_home=openclaw_home, workspace_root=openclaw_home / "workspace", db_path=Path("data/monitor.db"))
+                config.goals = [
+                    GoalConfig(
+                        id="cron_reliability",
+                        name="Cron Reliability",
+                        builtin=True,
+                        metrics=[
+                            MetricConfig(name="success_rate", unit="%", healthy=95, warning=80, direction="higher"),
+                            MetricConfig(name="failed_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                            MetricConfig(name="unknown_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                        ],
+                    )
+                ]
+                config.save("config.yaml")
+
+                (cron_dir / "jobs.json").write_text(json.dumps({
+                    "jobs": [
+                        {
+                            "id": "job-1",
+                            "name": "Job One",
+                            "schedule": {"kind": "cron", "expr": "0 7,12,19 * * *"},
+                            "enabled": True,
+                        }
+                    ]
+                }), encoding="utf-8")
+                exact_ms = int(datetime.fromisoformat("2026-03-15T07:00:12").timestamp() * 1000)
+                late_ms = int(datetime.fromisoformat("2026-03-15T12:04:09").timestamp() * 1000)
+                extra_ms = int(datetime.fromisoformat("2026-03-15T12:06:00").timestamp() * 1000)
+                (runs_dir / "job-1.jsonl").write_text(
+                    json.dumps({
+                        "ts": exact_ms,
+                        "runAtMs": exact_ms,
+                        "startedAt": "2026-03-15T07:00:12",
+                        "completedAt": "2026-03-15T07:01:12",
+                        "jobId": "job-1",
+                        "runId": "exact-0700",
+                        "action": "finished",
+                        "status": "completed",
+                        "deliveryStatus": "delivered",
+                        "usage": {"input_tokens": 12, "output_tokens": 4, "total_tokens": 16},
+                    }) + "\n"
+                    + json.dumps({
+                        "ts": late_ms,
+                        "runAtMs": late_ms,
+                        "startedAt": "2026-03-15T12:04:09",
+                        "completedAt": "2026-03-15T12:05:09",
+                        "jobId": "job-1",
+                        "runId": "late-1204",
+                        "action": "finished",
+                        "status": "error",
+                        "error": {"message": "cron: job execution timed out"},
+                        "deliveryStatus": "delivered",
+                        "usage": {"input_tokens": 14, "output_tokens": 5, "total_tokens": 19},
+                    }) + "\n"
+                    + json.dumps({
+                        "ts": extra_ms,
+                        "runAtMs": extra_ms,
+                        "startedAt": "2026-03-15T12:06:00",
+                        "completedAt": "2026-03-15T12:07:00",
+                        "jobId": "job-1",
+                        "runId": "extra-1206",
+                        "action": "finished",
+                        "status": "completed",
+                        "deliveryStatus": "delivered",
+                        "usage": {"input_tokens": 10, "output_tokens": 3, "total_tokens": 13},
+                    }) + "\n",
+                    encoding="utf-8",
+                )
+
+                result = runner.invoke(main, ["collect", "--date", "2026-03-15"])
+                assert result.exit_code == 0
+                normalized_output = " ".join(result.output.split())
+                assert (
+                    "expected 3 slots, observed 2 (1 exact, 1 late<=5m), missed 1, unexpected 1 run -> "
+                    "2 success, 1 timeout"
+                ) in normalized_output

@@ -342,7 +342,7 @@ def _health_status(value: float, healthy: float, warning: float, direction: str 
 
 def _goal_description(goal_id: str) -> str:
     descriptions = {
-        "cron_reliability": "success rate across all observed cron jobs",
+        "cron_reliability": "run outcomes plus slot adherence across all cron jobs",
         "team_health": "daily execution activity and workspace memory discipline",
     }
     return descriptions.get(goal_id, "")
@@ -357,8 +357,11 @@ def _cron_reliability_summary(metrics) -> str | None:
     total_runs = int(breakdown.get("total_runs") or 0)
     expected_slots = int(breakdown.get("expected_slots") or 0)
     observed_slots = int(breakdown.get("observed_slots") or 0)
+    exact_matches = int(breakdown.get("exact_matches") or 0)
+    late_matches = int(breakdown.get("late_matches") or 0)
     missed = int(breakdown.get("missed") or 0)
     unexpected_runs = int(breakdown.get("unexpected_runs") or 0)
+    late_tolerance_minutes = int(breakdown.get("late_tolerance_minutes") or 0)
     if total_runs <= 0 and expected_slots <= 0:
         return None
 
@@ -381,7 +384,14 @@ def _cron_reliability_summary(metrics) -> str | None:
         parts.append("0 success")
 
     if expected_slots > 0 or observed_slots > 0 or missed > 0:
-        prefix = f"expected {expected_slots} slots, observed {observed_slots}, missed {missed}"
+        observed_phrase = f"observed {observed_slots}"
+        if late_matches > 0:
+            match_parts: list[str] = []
+            if exact_matches > 0:
+                match_parts.append(f"{exact_matches} exact")
+            match_parts.append(f"{late_matches} late<={late_tolerance_minutes}m")
+            observed_phrase += f" ({', '.join(match_parts)})"
+        prefix = f"expected {expected_slots} slots, {observed_phrase}, missed {missed}"
         if unexpected_runs:
             suffix = "run" if unexpected_runs == 1 else "runs"
             prefix += f", unexpected {unexpected_runs} {suffix}"

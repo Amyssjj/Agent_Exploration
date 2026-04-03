@@ -86,7 +86,7 @@ The CLI auto-detects your OpenClaw installation:
   Cron:      ✓ 6 jobs (5 enabled, 1 disabled)
 
 📊 Setting up built-in goals:
-  ✓ G1 · Cron Reliability - success rate across all cron jobs
+  ✓ G1 · Cron Reliability - run outcomes plus slot adherence across cron jobs
   ✓ G2 · Team Health - daily agent activity
 
 📋 Optional goal templates:
@@ -124,22 +124,20 @@ oa collect
 📊 Collecting data for 2026-03-15...
 
   G1 · Cron Reliability
-    ✓ Read 6 cron jobs from ~/.openclaw/cron/jobs.json
-    ✓ Scanned 234 run entries from JSONL logs
-    ✓ Observed 18 runs today → 15 success, 2 failed, 1 unknown
-    ✓ Success rate: 83.3%
-    🔭 Trace: a4f2c... (6 spans)
+    ✓ success_rate: 83.3%
+    ✓ failed_runs: 2.0 count
+    ✓ unknown_runs: 1.0 count
+    expected 18 slots, observed 17 (15 exact, 2 late<=5m), missed 1, unexpected 1 run -> 15 success, 2 timeout, 1 unknown
 
   G2 · Team Health
-    ✓ Scanned 4 agents
-    ✓ 3 active today (researcher, reviewer, publisher)
-    ✓ Memory logged: 2/4 agents
-    🔭 Trace: b7e1d... (4 spans)
+    ✓ active_agent_count: 3.0 count
+    ✓ inactive_agent_count: 1.0 count
+    ✓ memory_discipline: 50.0%
 
 ✓ Results written to data/monitor.db
 ```
 
-The built-in pipelines read directly from OpenClaw's files - the same `cron/runs/*.jsonl` and session directories that already exist. No new data collection agents needed.
+The built-in pipelines read directly from OpenClaw's files - the same `cron/jobs.json`, `cron/runs/*.jsonl`, and session directories that already exist. No new data collection agents needed.
 
 ### Step 4: View Dashboard
 
@@ -199,13 +197,29 @@ These work out of the box for any OpenClaw user. Zero configuration needed.
 
 ### G1 · Cron Reliability
 
-Tracks whether your cron jobs are actually succeeding, not just running.
+Tracks whether your cron jobs are actually succeeding and whether expected schedule slots are being hit.
 
 | Metric | Description | Source |
 |--------|-------------|--------|
-| `success_rate` | % of observed cron runs that succeeded | `~/.openclaw/cron/runs/*.jsonl` |
-| `failed_runs` | Count of failed cron runs (lower is better) | `~/.openclaw/cron/runs/*.jsonl` |
-| `unknown_runs` | Count of runs with unclassified status (lower is better) | `~/.openclaw/cron/runs/*.jsonl` |
+| `success_rate` | Successful observed runs as a percent of `max(observed runs, expected slots)` when OA can expand the schedule from `jobs.json`; otherwise `success / observed runs` | `~/.openclaw/cron/jobs.json` + `~/.openclaw/cron/runs/*.jsonl` |
+| `failed_runs` | Count of observed failed runs only (`failure`, `timeout`, `delivery_error`); missed slots are not added here | `~/.openclaw/cron/runs/*.jsonl` |
+| `unknown_runs` | Count of observed runs with unclassified status only; missed slots are not added here | `~/.openclaw/cron/runs/*.jsonl` |
+
+Schedule breakdowns are exposed in `oa collect` and in the stored metric breakdown:
+- `observed_slots` = expected slots that matched an observed run one-to-one
+- `missed` = expected slots that had no exact or unique late match
+- `unexpected_runs` = observed runs that did not match any expected slot one-to-one
+- `exact_matches` / `late_matches` = matched-slot split for explainability
+
+Slot-matching policy:
+1. Match the run to the exact expected minute for that job when possible.
+2. Otherwise allow one unique unmatched expected slot up to 5 minutes earlier.
+3. Never match early runs to future slots.
+4. If multiple earlier slots are within the grace window, leave the run unmatched and count it as unexpected.
+
+`schedule.kind=every` policy:
+- `everyMs` must be at least `60000` because slot reasoning is minute-based today.
+- If `anchorMs` is missing, OA treats it as `anchorMs=0`, so the phase comes from the Unix epoch in local wall-clock time.
 
 **Data flow:**
 ```

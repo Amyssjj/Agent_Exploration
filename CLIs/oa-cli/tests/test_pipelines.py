@@ -3,7 +3,7 @@ import json
 import os
 import sqlite3
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from oa.core.config import AgentConfig, GoalConfig, MetricConfig, ProjectConfig
@@ -53,6 +53,38 @@ def _make_project(tmpdir: str) -> ProjectConfig:
         ),
     ]
     return config
+
+
+def _realish_cron_run(
+    started_at: str,
+    job_id: str,
+    *,
+    status: str = "completed",
+    action: str = "finished",
+    error=None,
+    delivery_status: str = "delivered",
+    run_id: str | None = None,
+) -> dict:
+    started_dt = datetime.fromisoformat(started_at)
+    completed_dt = started_dt + timedelta(minutes=1)
+    payload = {
+        "ts": int(started_dt.timestamp() * 1000),
+        "runAtMs": int(started_dt.timestamp() * 1000),
+        "startedAt": started_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+        "completedAt": completed_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+        "action": action,
+        "status": status,
+        "jobId": job_id,
+        "runId": run_id or f"{job_id}:{started_dt.strftime('%H%M%S')}",
+        "sessionKey": f"agent:main:cron:{job_id}:run:{run_id or started_dt.strftime('%H%M%S')}",
+        "model": "gpt-5-mini",
+        "provider": "openai",
+        "deliveryStatus": delivery_status,
+        "usage": {"input_tokens": 12, "output_tokens": 4, "total_tokens": 16},
+    }
+    if error is not None:
+        payload["error"] = error
+    return payload
 
 
 class TestCronReliabilityPipeline:
@@ -241,6 +273,191 @@ class TestCronReliabilityPipeline:
             assert per_job["missed"] == 1
             assert per_job["missed_slot_times"] == ["19:00:00"]
 
+    def test_matches_slightly_late_run_to_expected_slot_within_grace_window(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            late_tolerance_minutes = CronReliabilityPipeline._LATE_MATCH_TOLERANCE_MINUTES
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "test-job",
+                        "name": "Test Job",
+                        "schedule": {"kind": "cron", "expr": "0 7 * * *"},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+            with open(cron_dir / "runs" / "test-job.jsonl", "w", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "startedAt": f"2026-03-15T07:{late_tolerance_minutes:02d}:00",
+                    "action": "finished",
+                    "status": "completed",
+                    "jobId": "test-job",
+                }) + "\n")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+
+            assert success.breakdown["success"] == 1
+            assert success.breakdown["expected_slots"] == 1
+            assert success.breakdown["observed_slots"] == 1
+            assert success.breakdown["missed"] == 0
+            assert success.breakdown["unexpected_runs"] == 0
+            assert success.breakdown["late_tolerance_minutes"] == late_tolerance_minutes
+            assert f"up to {late_tolerance_minutes} minutes late tolerance for unique matches" in success.breakdown["note"]
+
+            per_job = success.breakdown["per_job"]["Test Job"]
+            assert per_job["observed_slots"] == 1
+            assert per_job["missed"] == 0
+            assert per_job["unexpected_runs"] == 0
+
+    def test_does_not_match_run_past_late_grace_window(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            late_tolerance_minutes = CronReliabilityPipeline._LATE_MATCH_TOLERANCE_MINUTES
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "test-job",
+                        "name": "Test Job",
+                        "schedule": {"kind": "cron", "expr": "0 7 * * *"},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+            with open(cron_dir / "runs" / "test-job.jsonl", "w", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "startedAt": f"2026-03-15T07:{late_tolerance_minutes + 1:02d}:00",
+                    "action": "finished",
+                    "status": "completed",
+                    "jobId": "test-job",
+                }) + "\n")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+
+            assert success.breakdown["success"] == 1
+            assert success.breakdown["expected_slots"] == 1
+            assert success.breakdown["observed_slots"] == 0
+            assert success.breakdown["missed"] == 1
+            assert success.breakdown["unexpected_runs"] == 1
+            assert success.breakdown["missed_slots"] == [
+                {"cron_name": "Test Job", "job_id": "test-job", "slot_time": "07:00:00"}
+            ]
+
+            per_job = success.breakdown["per_job"]["Test Job"]
+            assert per_job["observed_slots"] == 0
+            assert per_job["missed"] == 1
+            assert per_job["unexpected_runs"] == 1
+            assert per_job["missed_slot_times"] == ["07:00:00"]
+
+    def test_keeps_ambiguous_late_run_unmatched(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "test-job",
+                        "name": "Test Job",
+                        "schedule": {"kind": "cron", "expr": "0,2 7 * * *"},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+            with open(cron_dir / "runs" / "test-job.jsonl", "w", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "startedAt": "2026-03-15T07:03:00",
+                    "action": "finished",
+                    "status": "completed",
+                    "jobId": "test-job",
+                }) + "\n")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+
+            assert success.breakdown["success"] == 1
+            assert success.breakdown["expected_slots"] == 2
+            assert success.breakdown["observed_slots"] == 0
+            assert success.breakdown["missed"] == 2
+            assert success.breakdown["unexpected_runs"] == 1
+            assert success.breakdown["missed_slots"] == [
+                {"cron_name": "Test Job", "job_id": "test-job", "slot_time": "07:00:00"},
+                {"cron_name": "Test Job", "job_id": "test-job", "slot_time": "07:02:00"},
+            ]
+
+            per_job = success.breakdown["per_job"]["Test Job"]
+            assert per_job["observed_slots"] == 0
+            assert per_job["missed"] == 2
+            assert per_job["unexpected_runs"] == 1
+            assert per_job["missed_slot_times"] == ["07:00:00", "07:02:00"]
+
+    def test_matches_realistic_openclaw_log_shapes_with_exact_late_and_unexpected_runs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "daily-digest",
+                        "name": "Daily Digest",
+                        "schedule": {"kind": "cron", "expr": "0 7,12,19 * * *"},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+            runs = [
+                _realish_cron_run("2026-03-15T06:59:50", "daily-digest", action="started"),
+                _realish_cron_run("2026-03-15T07:00:12", "daily-digest", status="completed", run_id="exact-0700"),
+                _realish_cron_run(
+                    "2026-03-15T12:04:09",
+                    "daily-digest",
+                    status="error",
+                    error={"message": "cron: job execution timed out"},
+                    run_id="late-1204",
+                ),
+                _realish_cron_run("2026-03-15T12:06:00", "daily-digest", status="completed", run_id="extra-1206"),
+            ]
+            with open(cron_dir / "runs" / "daily-digest.jsonl", "w", encoding="utf-8") as f:
+                for run in runs:
+                    f.write(json.dumps(run) + "\n")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+
+            assert abs(success.value - 66.7) < 0.1
+            assert success.breakdown["expected_slots"] == 3
+            assert success.breakdown["observed_slots"] == 2
+            assert success.breakdown["exact_matches"] == 1
+            assert success.breakdown["late_matches"] == 1
+            assert success.breakdown["missed"] == 1
+            assert success.breakdown["unexpected_runs"] == 1
+            assert success.breakdown["failure_types"] == {"timeout": 1}
+            assert success.breakdown["status_details"] == {"success": 2, "timeout": 1}
+            assert success.breakdown["slot_matching_policy"] == (
+                "one-to-one per job: exact minute first; otherwise match a single unmatched expected slot up to "
+                f"{CronReliabilityPipeline._LATE_MATCH_TOLERANCE_MINUTES} minutes earlier; early runs never match future slots; "
+                "ambiguous late runs stay unexpected"
+            )
+            assert success.breakdown["missed_slots"] == [
+                {"cron_name": "Daily Digest", "job_id": "daily-digest", "slot_time": "19:00:00"}
+            ]
+
+            per_job = success.breakdown["per_job"]["Daily Digest"]
+            assert per_job["expected_slots"] == 3
+            assert per_job["observed_slots"] == 2
+            assert per_job["exact_matches"] == 1
+            assert per_job["late_matches"] == 1
+            assert per_job["missed"] == 1
+            assert per_job["unexpected_runs"] == 1
+            assert per_job["missed_slot_times"] == ["19:00:00"]
+
     def test_reports_expected_and_missed_slots_from_every_schedule_with_anchor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = _make_project(tmpdir)
@@ -316,12 +533,21 @@ class TestCronReliabilityPipeline:
             assert success.breakdown["observed_slots"] == 0
             assert success.breakdown["missed"] == 1
             assert success.breakdown["unexpected_runs"] == 0
+            assert success.breakdown["no_anchor_every_policy"] == (
+                "schedule.kind=every without anchorMs is treated as anchorMs=0, "
+                "so slots use the Unix epoch phase in local wall-clock time at minute precision"
+            )
+            assert success.breakdown["unanchored_every_jobs"] == [
+                {"cron_name": "Daily Interval", "job_id": "daily-interval"}
+            ]
+            assert "missing every anchorMs uses Unix epoch phase (anchorMs=0)" in success.breakdown["note"]
             assert success.breakdown["missed_slots"] == [
                 {"cron_name": "Daily Interval", "job_id": "daily-interval", "slot_time": expected_slot_time}
             ]
 
             per_job = success.breakdown["per_job"]["Daily Interval"]
             assert per_job["expected_slots"] == 1
+            assert per_job["phase_policy"] == success.breakdown["no_anchor_every_policy"]
             assert per_job["missed_slot_times"] == [expected_slot_time]
 
     def test_marks_subminute_every_schedule_unsupported(self):
