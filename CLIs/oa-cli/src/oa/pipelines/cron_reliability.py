@@ -112,6 +112,7 @@ class CronReliabilityPipeline(Pipeline):
                         "missed_slot_times": list(schedule_job.get("missed_slot_times") or []),
                         "unexpected_runs": int(schedule_job.get("unexpected_runs") or 0),
                         "supported_schedule": bool(schedule_job.get("supported_schedule")),
+                        "unsupported_reason": schedule_job.get("unsupported_reason"),
                         "phase_policy": schedule_job.get("phase_policy"),
                     }
                     total_runs += total

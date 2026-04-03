@@ -18,6 +18,14 @@ export interface CronUnanchoredEveryJob {
 }
 
 export interface CronPerJobBreakdown {
+  job_id?: string;
+  total?: number;
+  success?: number;
+  failed?: number;
+  unknown?: number;
+  status_details?: Record<string, number>;
+  rate?: number;
+  avg_duration_ms?: number | null;
   expected_slots?: number;
   observed_slots?: number;
   exact_matches?: number;

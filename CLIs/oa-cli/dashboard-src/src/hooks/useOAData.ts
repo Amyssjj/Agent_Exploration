@@ -7,6 +7,7 @@ import type {
   AgentActivity,
   GoalMetricHistoryEntry,
 } from "../types";
+import { getVisualTestFixture, isVisualTestMode } from "../lib/runtimeFlags";
 
 interface OAData {
   goals: GoalSummary[];
@@ -26,13 +27,18 @@ async function fetchJSON<T>(url: string): Promise<T> {
 }
 
 export function useOAData(refreshMs: number = 30000): OAData {
-  const [goals, setGoals] = useState<GoalSummary[]>([]);
-  const [health, setHealth] = useState<HealthSummary | null>(null);
-  const [traces, setTraces] = useState<TraceSpan[]>([]);
-  const [cronRuns, setCronRuns] = useState<CronRun[]>([]);
-  const [teamHealth, setTeamHealth] = useState<AgentActivity[]>([]);
-  const [goalMetrics, setGoalMetrics] = useState<Record<string, GoalMetricHistoryEntry[]>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const visualTestMode = isVisualTestMode();
+  const visualFixture = getVisualTestFixture();
+  const hasVisualFixture = visualFixture !== null;
+  const [goals, setGoals] = useState<GoalSummary[]>(() => visualFixture?.goals ?? []);
+  const [health, setHealth] = useState<HealthSummary | null>(() => visualFixture?.health ?? null);
+  const [traces, setTraces] = useState<TraceSpan[]>(() => visualFixture?.traces ?? []);
+  const [cronRuns, setCronRuns] = useState<CronRun[]>(() => visualFixture?.cronRuns ?? []);
+  const [teamHealth, setTeamHealth] = useState<AgentActivity[]>(() => visualFixture?.teamHealth ?? []);
+  const [goalMetrics, setGoalMetrics] = useState<Record<string, GoalMetricHistoryEntry[]>>(
+    () => visualFixture?.goalMetrics ?? {},
+  );
+  const [isLoading, setIsLoading] = useState(!hasVisualFixture);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -60,10 +66,17 @@ export function useOAData(refreshMs: number = 30000): OAData {
   }, []);
 
   useEffect(() => {
+    if (hasVisualFixture) {
+      return;
+    }
+
     load();
+    if (visualTestMode) {
+      return;
+    }
     const timer = setInterval(load, refreshMs);
     return () => clearInterval(timer);
-  }, [load, refreshMs]);
+  }, [hasVisualFixture, load, refreshMs, visualTestMode]);
 
   return { goals, health, traces, cronRuns, teamHealth, goalMetrics, isLoading, error };
 }

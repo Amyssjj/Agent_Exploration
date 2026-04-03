@@ -1,8 +1,29 @@
-import { motion } from "framer-motion";
+import { lazy, Suspense } from "react";
 import { GoalCard } from "./GoalCard";
-import { GoalDetailSection } from "./GoalDetailSection";
 import { HealthSummaryStrip } from "./HealthSummaryStrip";
 import type { GoalSummary, HealthSummary, CronRun, AgentActivity, GoalMetricHistoryEntry } from "../types";
+
+const GoalDetailSection = lazy(async () => {
+  const module = await import("./GoalDetailSection");
+  return { default: module.GoalDetailSection };
+});
+
+function GoalDetailFallback() {
+  return (
+    <div className="detail-section space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="h-6 w-40 rounded-full bg-gray-100" />
+        <div className="h-5 w-16 rounded-full bg-gray-100" />
+      </div>
+      <div className="h-[200px] rounded-2xl bg-gray-50" />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-24 rounded-2xl bg-gray-50" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   goals: GoalSummary[];
@@ -28,13 +49,15 @@ export function SystemHealth({ goals, health, goalMetrics, cronRuns, teamHealth 
             </div>
 
             {/* Right: expanded detail with chart */}
-            <GoalDetailSection
-              goal={goal}
-              index={i}
-              metrics={goalMetrics[goal.id] || []}
-              cronRuns={cronRuns}
-              teamHealth={teamHealth}
-            />
+            <Suspense fallback={<GoalDetailFallback />}>
+              <GoalDetailSection
+                goal={goal}
+                index={i}
+                metrics={goalMetrics[goal.id] || []}
+                cronRuns={cronRuns}
+                teamHealth={teamHealth}
+              />
+            </Suspense>
           </div>
         ))}
       </div>

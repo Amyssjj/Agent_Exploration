@@ -581,6 +581,11 @@ class TestCronReliabilityPipeline:
                     "reason": "every schedule under 60000ms not supported at current minute slot precision",
                 }
             ]
+            per_job = success.breakdown["per_job"]["Fast Interval"]
+            assert per_job["supported_schedule"] is False
+            assert per_job["unsupported_reason"] == (
+                "every schedule under 60000ms not supported at current minute slot precision"
+            )
 
     def test_unknown_statuses_are_counted_separately(self):
         with tempfile.TemporaryDirectory() as tmpdir:
