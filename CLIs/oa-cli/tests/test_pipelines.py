@@ -241,6 +241,121 @@ class TestCronReliabilityPipeline:
             assert per_job["missed"] == 1
             assert per_job["missed_slot_times"] == ["19:00:00"]
 
+    def test_reports_expected_and_missed_slots_from_every_schedule_with_anchor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            anchor_ms = int(datetime(2026, 3, 14, 23, 0, 0).timestamp() * 1000)
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "interval-job",
+                        "name": "Interval Job",
+                        "schedule": {"kind": "every", "everyMs": 6 * 60 * 60 * 1000, "anchorMs": anchor_ms},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+            with open(cron_dir / "runs" / "interval-job.jsonl", "w", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "startedAt": "2026-03-15T05:00:00",
+                    "action": "finished",
+                    "status": "completed",
+                    "jobId": "interval-job",
+                }) + "\n")
+                f.write(json.dumps({
+                    "startedAt": "2026-03-15T17:00:00",
+                    "action": "finished",
+                    "status": "failed",
+                    "jobId": "interval-job",
+                }) + "\n")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+
+            assert abs(success.value - 25.0) < 0.1
+            assert success.breakdown["mode"] == "scheduled_mode"
+            assert success.breakdown["expected_slots"] == 4
+            assert success.breakdown["observed_slots"] == 2
+            assert success.breakdown["missed"] == 2
+            assert success.breakdown["unexpected_runs"] == 0
+            assert success.breakdown["success_rate_denominator"] == 4
+            assert success.breakdown["missed_slots"] == [
+                {"cron_name": "Interval Job", "job_id": "interval-job", "slot_time": "11:00:00"},
+                {"cron_name": "Interval Job", "job_id": "interval-job", "slot_time": "23:00:00"},
+            ]
+
+            per_job = success.breakdown["per_job"]["Interval Job"]
+            assert per_job["expected_slots"] == 4
+            assert per_job["observed_slots"] == 2
+            assert per_job["missed"] == 2
+            assert per_job["missed_slot_times"] == ["11:00:00", "23:00:00"]
+
+    def test_reports_unanchored_every_schedule_using_epoch_alignment(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "daily-interval",
+                        "name": "Daily Interval",
+                        "schedule": {"kind": "every", "everyMs": 24 * 60 * 60 * 1000},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+            expected_slot_time = datetime.fromtimestamp(0).strftime("%H:%M:%S")
+
+            assert success.breakdown["expected_slots"] == 1
+            assert success.breakdown["observed_slots"] == 0
+            assert success.breakdown["missed"] == 1
+            assert success.breakdown["unexpected_runs"] == 0
+            assert success.breakdown["missed_slots"] == [
+                {"cron_name": "Daily Interval", "job_id": "daily-interval", "slot_time": expected_slot_time}
+            ]
+
+            per_job = success.breakdown["per_job"]["Daily Interval"]
+            assert per_job["expected_slots"] == 1
+            assert per_job["missed_slot_times"] == [expected_slot_time]
+
+    def test_marks_subminute_every_schedule_unsupported(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _make_project(tmpdir)
+            cron_dir = config.openclaw_home / "cron"
+            jobs = {
+                "jobs": [
+                    {
+                        "id": "fast-interval",
+                        "name": "Fast Interval",
+                        "schedule": {"kind": "every", "everyMs": 30 * 1000},
+                        "enabled": True,
+                    }
+                ]
+            }
+            (cron_dir / "jobs.json").write_text(json.dumps(jobs), encoding="utf-8")
+
+            metrics = CronReliabilityPipeline().collect("2026-03-15", config)
+            success = next(m for m in metrics if m.name == "success_rate")
+
+            assert success.breakdown["expected_slots"] == 0
+            assert success.breakdown["observed_slots"] == 0
+            assert success.breakdown["missed"] == 0
+            assert success.breakdown["unsupported_schedules"] == [
+                {
+                    "job_id": "fast-interval",
+                    "cron_name": "Fast Interval",
+                    "schedule_kind": "every",
+                    "expr": None,
+                    "reason": "every schedule under 60000ms not supported at current minute slot precision",
+                }
+            ]
+
     def test_unknown_statuses_are_counted_separately(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config = _make_project(tmpdir)

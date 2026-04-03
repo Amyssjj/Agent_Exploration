@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -300,26 +300,64 @@ class CronReliabilityPipeline(Pipeline):
             )
 
         if summary["supported_jobs"] == 0:
-            summary["note"] = "expected-slot reasoning currently supports standard 5-field cron expressions; using observed runs only"
+            summary["note"] = "expected-slot reasoning currently supports cron schedules and every schedules >=60s; using observed runs only"
         elif summary["unsupported_schedules"]:
-            summary["note"] = "expected-slot reasoning enabled for supported cron schedules; unsupported schedules are listed separately"
+            summary["note"] = "expected-slot reasoning enabled for supported cron/every schedules; unsupported schedules are listed separately"
         elif summary["expected_slots"] == 0:
             summary["note"] = "expected-slot reasoning enabled; no slots were scheduled for this date"
         else:
-            summary["note"] = "expected-slot reasoning enabled from jobs.json cron schedules"
+            summary["note"] = "expected-slot reasoning enabled from jobs.json schedules"
         return summary
 
     def _expected_slots_for_job(self, date: str, job_meta: dict[str, Any]) -> tuple[list[datetime] | None, str | None]:
         schedule_kind = str(job_meta.get("schedule_kind") or "unknown").lower()
         schedule = job_meta.get("schedule") or {}
-        if schedule_kind != "cron":
-            return None, f"schedule.kind={schedule_kind} not supported"
-        expr = self._coerce_text(schedule.get("expr"))
-        if not expr:
-            return None, "cron schedule missing expr"
-        slots = self._expand_cron_slots(date, expr)
-        if slots is None:
-            return None, f"unsupported cron expr: {expr}"
+        if schedule_kind == "cron":
+            expr = self._coerce_text(schedule.get("expr"))
+            if not expr:
+                return None, "cron schedule missing expr"
+            slots = self._expand_cron_slots(date, expr)
+            if slots is None:
+                return None, f"unsupported cron expr: {expr}"
+            return slots, None
+        if schedule_kind == "every":
+            every_ms = self._safe_int(schedule.get("everyMs"))
+            if every_ms is None or every_ms <= 0:
+                return None, "every schedule missing valid everyMs"
+            return self._expand_every_slots(date, every_ms, schedule.get("anchorMs"))
+        return None, f"schedule.kind={schedule_kind} not supported"
+
+    def _expand_every_slots(self, date: str, every_ms: int, anchor_ms: Any) -> tuple[list[datetime] | None, str | None]:
+        if every_ms < 60_000:
+            return None, "every schedule under 60000ms not supported at current minute slot precision"
+
+        if anchor_ms is None:
+            raw_anchor_ms = 0
+        else:
+            raw_anchor_ms = self._safe_int(anchor_ms)
+            if raw_anchor_ms is None:
+                return None, "every schedule has invalid anchorMs"
+
+        try:
+            anchor_dt = datetime.fromtimestamp(raw_anchor_ms / 1000).replace(microsecond=0)
+            step = timedelta(milliseconds=every_ms)
+        except (OverflowError, OSError, ValueError):
+            return None, "every schedule has invalid timing values"
+
+        day_start = datetime.strptime(date, "%Y-%m-%d")
+        day_end = day_start + timedelta(days=1)
+        current = anchor_dt
+
+        if current < day_start:
+            current += step * ((day_start - current) // step)
+            while current < day_start:
+                current += step
+
+        slots: list[datetime] = []
+        while current < day_end:
+            if current >= day_start:
+                slots.append(current)
+            current += step
         return slots, None
 
     def _expand_cron_slots(self, date: str, expr: str) -> list[datetime] | None:
