@@ -1,6 +1,8 @@
 """G2: Team Health Pipeline — tracks daily agent activity and memory discipline."""
+
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -23,7 +25,6 @@ class TeamHealthPipeline(Pipeline):
         tracer = Tracer(service="g2_team_health", db_path=config.db_path)
 
         with tracer.span("G2: Team Health", {"goal": "G2", "date": date}) as root:
-
             active_agents = 0
             memory_logged = 0
             total_agents = len(config.agents)
@@ -31,12 +32,8 @@ class TeamHealthPipeline(Pipeline):
             # Step 1: Check each agent's activity
             with tracer.span("Scan Agent Activity") as scan:
                 for agent in config.agents:
-                    sessions = self._count_agent_sessions(
-                        config.openclaw_home, agent.id, date
-                    )
-                    has_memory = self._check_memory_logged(
-                        config.openclaw_home, agent.id, date
-                    )
+                    sessions = self._count_agent_sessions(config.openclaw_home, agent.id, date)
+                    has_memory = self._check_memory_logged(config.openclaw_home, agent.id, date)
 
                     if sessions > 0:
                         active_agents += 1
@@ -45,8 +42,11 @@ class TeamHealthPipeline(Pipeline):
 
                     # Write to daily_agent_activity
                     self._write_activity(
-                        config.db_path, date, agent.id,
-                        sessions, has_memory,
+                        config.db_path,
+                        date,
+                        agent.id,
+                        sessions,
+                        has_memory,
                     )
 
                 scan.set_attribute("active_agents", active_agents)
@@ -55,35 +55,81 @@ class TeamHealthPipeline(Pipeline):
 
             # Step 2: Compute metrics
             with tracer.span("Compute Metrics"):
-                discipline = (
-                    round(memory_logged / total_agents * 100, 1)
-                    if total_agents > 0 else 0
-                )
+                discipline = round(memory_logged / total_agents * 100, 1) if total_agents > 0 else 0
 
             root.set_attribute("active_agent_count", active_agents)
             root.set_attribute("memory_discipline", discipline)
 
         tracer.flush()
         return [
-            Metric("active_agent_count", active_agents, unit="count", breakdown={
-                "total_agents": total_agents,
-                "active": active_agents,
-            }),
-            Metric("memory_discipline", discipline, unit="%", breakdown={
-                "logged": memory_logged,
-                "total": total_agents,
-            }),
+            Metric(
+                "active_agent_count",
+                active_agents,
+                unit="count",
+                breakdown={
+                    "total_agents": total_agents,
+                    "active": active_agents,
+                },
+            ),
+            Metric(
+                "memory_discipline",
+                discipline,
+                unit="%",
+                breakdown={
+                    "logged": memory_logged,
+                    "total": total_agents,
+                },
+            ),
         ]
 
-    def _count_agent_sessions(self, openclaw_home: Path, agent_id: str,
-                              date: str) -> int:
-        """Count sessions for an agent on a given date."""
+    def _count_agent_sessions(self, openclaw_home: Path, agent_id: str, date: str) -> int:
+        """Count sessions for an agent on a given date.
+
+        Supports both the older global ``sessions/`` layout and the newer
+        ``agents/<agent>/sessions/sessions.json`` registry layout.
+        """
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+        # Newer OpenClaw layout: per-agent session registry.
+        registry_path = openclaw_home / "agents" / agent_id / "sessions" / "sessions.json"
+        if registry_path.exists():
+            try:
+                raw = json.loads(registry_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                raw = {}
+
+            count = 0
+            for session in raw.values():
+                if not isinstance(session, dict):
+                    continue
+
+                updated_at = session.get("updatedAt")
+                if isinstance(updated_at, (int, float)):
+                    try:
+                        updated_date = datetime.fromtimestamp(updated_at / 1000).date()
+                        if updated_date == target_date:
+                            count += 1
+                            continue
+                    except (OSError, OverflowError, ValueError):
+                        pass
+
+                session_file = session.get("sessionFile")
+                if isinstance(session_file, str):
+                    try:
+                        mtime = datetime.fromtimestamp(Path(session_file).stat().st_mtime).date()
+                        if mtime == target_date:
+                            count += 1
+                    except OSError:
+                        continue
+
+            return count
+
+        # Older OpenClaw layout: flattened global session files.
         sessions_dir = openclaw_home / "sessions"
         if not sessions_dir.exists():
             return 0
 
         count = 0
-        target_date = datetime.strptime(date, "%Y-%m-%d").date()
 
         for path in sessions_dir.iterdir():
             if not path.is_file():
@@ -100,25 +146,38 @@ class TeamHealthPipeline(Pipeline):
 
         return count
 
-    def _check_memory_logged(self, openclaw_home: Path, agent_id: str,
-                             date: str) -> bool:
-        """Check if an agent has a memory file for the given date."""
-        # Check common memory file patterns
-        # Pattern 1: Agent workspace memory/YYYY-MM-DD.md
-        # We check under the openclaw home and common workspace patterns
+    def _check_memory_logged(self, openclaw_home: Path, agent_id: str, date: str) -> bool:
+        """Check if an agent has a memory artifact for the given date."""
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+        workspace_dir = openclaw_home / (
+            "workspace" if agent_id == "main" else f"workspace-{agent_id}"
+        )
         possible_paths = [
             openclaw_home / "agents" / agent_id / "memory" / f"{date}.md",
-            openclaw_home / "workspaces" / agent_id / "memory" / f"{date}.md",
+            workspace_dir / "memory" / f"{date}.md",
+            openclaw_home / "memory" / f"{agent_id}.sqlite",
         ]
 
         for path in possible_paths:
-            if path.exists():
+            if not path.exists():
+                continue
+
+            if path.suffix == ".md":
                 return True
+
+            try:
+                mtime = datetime.fromtimestamp(path.stat().st_mtime).date()
+                if mtime == target_date:
+                    return True
+            except OSError:
+                continue
 
         return False
 
-    def _write_activity(self, db_path: Path, date: str, agent_id: str,
-                        session_count: int, memory_logged: bool) -> None:
+    def _write_activity(
+        self, db_path: Path, date: str, agent_id: str, session_count: int, memory_logged: bool
+    ) -> None:
         """Write agent activity to daily_agent_activity table."""
         db = sqlite3.connect(str(db_path))
         db.execute("PRAGMA journal_mode=WAL")

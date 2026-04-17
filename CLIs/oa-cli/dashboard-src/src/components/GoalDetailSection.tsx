@@ -5,6 +5,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import type { GoalSummary, CronRun, AgentActivity } from "../types";
+import { formatShortDate, localizeGoalName, localizeMetricName, useI18n } from "../i18n";
 
 // ── Helpers ──
 
@@ -17,20 +18,11 @@ function healthColor(status: string): string {
   }
 }
 
-function formatDate(d: string): string {
-  const dt = new Date(d + "T00:00:00");
-  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 function formatValue(value: number | null, unit: string): string {
   if (value === null) return "—";
   if (unit === "%" || unit === "percent") return `${Math.round(value)}%`;
   if (unit === "count") return `${Math.round(value)}`;
   return `${Math.round(value * 10) / 10}${unit ? ` ${unit}` : ""}`;
-}
-
-function formatMetricName(name: string): string {
-  return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ── Metric Definitions (left panel slide-out) ──
@@ -198,6 +190,7 @@ function CronTooltip({ active, payload, label }: {
 // ── Cron Reliability: Stacked Bar + Line (matches internal exactly) ──
 
 function CronReliabilityChart({ cronRuns }: { cronRuns: CronRun[] }) {
+  const { lang, t } = useI18n();
   // Aggregate by date
   const byDate = new Map<string, { success: number; failed: number; missed: number; total: number; jobs: Map<string, { success: number; total: number }> }>();
 
@@ -221,7 +214,7 @@ function CronReliabilityChart({ cronRuns }: { cronRuns: CronRun[] }) {
   const chartData = [...byDate.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, d]) => ({
-      dateLabel: formatDate(date),
+      dateLabel: formatShortDate(date, lang),
       success: d.success,
       failed: d.failed,
       missed: d.missed,
@@ -238,8 +231,8 @@ function CronReliabilityChart({ cronRuns }: { cronRuns: CronRun[] }) {
   if (chartData.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-1">
-        <span className="text-sm text-gray-300">Cron run tracking starting tomorrow</span>
-        <span className="text-[10px] text-gray-200">Combined chart will appear once per-slot data is recorded</span>
+        <span className="text-sm text-gray-300">{t("goal.cronStartingTomorrow")}</span>
+        <span className="text-[10px] text-gray-200">{t("goal.cronStartingHint")}</span>
       </div>
     );
   }
@@ -258,15 +251,15 @@ function CronReliabilityChart({ cronRuns }: { cronRuns: CronRun[] }) {
         <Tooltip content={<CronTooltip />} wrapperStyle={{ zIndex: 50 }} />
         <Legend iconSize={8} wrapperStyle={{ fontSize: "10px", paddingTop: "4px" }} />
         <Bar yAxisId="count" dataKey="success" stackId="runs" fill="#34D399" fillOpacity={0.6}
-          radius={[0, 0, 0, 0]} name="Succeeded" />
+          radius={[0, 0, 0, 0]} name={t("chart.succeeded")} />
         <Bar yAxisId="count" dataKey="failed" stackId="runs" fill="#F87171" fillOpacity={0.7}
-          radius={[0, 0, 0, 0]} name="Failed" />
+          radius={[0, 0, 0, 0]} name={t("chart.failed")} />
         <Bar yAxisId="count" dataKey="missed" stackId="runs" fill="#D1D5DB" fillOpacity={0.5}
-          radius={[2, 2, 0, 0]} name="Missed" />
+          radius={[2, 2, 0, 0]} name={t("chart.missed")} />
         <Line yAxisId="rate" type="monotone" dataKey="successRate" stroke="#60A5FA" strokeWidth={2.5}
           dot={{ r: 3, fill: "#60A5FA", stroke: "#fff", strokeWidth: 2 }}
           activeDot={{ r: 5, fill: "#60A5FA", stroke: "#fff", strokeWidth: 2 }}
-          name="Success Rate" />
+          name={t("chart.successRate")} />
       </ComposedChart>
     </ResponsiveContainer>
   );
@@ -285,6 +278,7 @@ function TeamHealthTooltip({ active, payload, label }: {
   payload?: Array<{ dataKey: string; value: number; color: string }>;
   label?: string;
 }) {
+  const { t } = useI18n();
   if (!active || !payload?.length) return null;
   const agents = payload.filter(p => p.dataKey !== "sessions" && p.value > 0);
   const sessionsEntry = payload.find(p => p.dataKey === "sessions");
@@ -302,7 +296,7 @@ function TeamHealthTooltip({ active, payload, label }: {
     }}>
       <div style={{ color: "#6B7280", fontSize: "10px", marginBottom: "6px" }}>{label}</div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-        <span style={{ fontWeight: 600, color: "#1F2937" }}>Active Agents</span>
+        <span style={{ fontWeight: 600, color: "#1F2937" }}>{t("chart.activeAgents")}</span>
         <span style={{ fontWeight: 700, color: "#374151" }}>{agents.length}</span>
       </div>
       {agents.map(a => (
@@ -315,7 +309,7 @@ function TeamHealthTooltip({ active, payload, label }: {
         <>
           <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", margin: "4px 0" }} />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: 600, color: "#F59E0B" }}>Sessions</span>
+            <span style={{ fontWeight: 600, color: "#F59E0B" }}>{t("chart.sessions")}</span>
             <span style={{ fontWeight: 700, color: "#F59E0B" }}>{sessionsEntry.value}</span>
           </div>
         </>
@@ -327,6 +321,7 @@ function TeamHealthTooltip({ active, payload, label }: {
 // ── Team Health: Stacked DAA Bar + Sessions Line (matches internal) ──
 
 function TeamHealthDualChart({ teamHealth }: { teamHealth: AgentActivity[] }) {
+  const { t, lang } = useI18n();
   // Get unique agents and dates
   const agentIds = [...new Set(teamHealth.map(a => a.agent_id))];
   const dates = [...new Set(teamHealth.map(a => a.date))].sort();
@@ -334,13 +329,13 @@ function TeamHealthDualChart({ teamHealth }: { teamHealth: AgentActivity[] }) {
   if (dates.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-1">
-        <span className="text-sm text-gray-300">Team health data loading...</span>
+        <span className="text-sm text-gray-300">{t("goal.teamLoading")}</span>
       </div>
     );
   }
 
   const chartData = dates.map(date => {
-    const dayData: Record<string, unknown> = { dateLabel: formatDate(date) };
+    const dayData: Record<string, unknown> = { dateLabel: formatShortDate(date, lang) };
     let totalSessions = 0;
     for (const agent of agentIds) {
       const row = teamHealth.find(a => a.date === date && a.agent_id === agent);
@@ -362,7 +357,7 @@ function TeamHealthDualChart({ teamHealth }: { teamHealth: AgentActivity[] }) {
           label={{ value: "#DAA", angle: -90, position: "insideLeft", style: { fontSize: 9, fill: "#9CA3AF" } }} />
         <YAxis yAxisId="sessions" orientation="right" tick={{ fontSize: 10, fill: "#F59E0B" }}
           tickLine={false} axisLine={false} width={28} allowDecimals={false}
-          label={{ value: "Sessions", angle: 90, position: "insideRight", style: { fontSize: 9, fill: "#F59E0B" } }} />
+          label={{ value: t("chart.sessions"), angle: 90, position: "insideRight", style: { fontSize: 9, fill: "#F59E0B" } }} />
         <Tooltip content={<TeamHealthTooltip />} wrapperStyle={{ zIndex: 50 }} />
         <Legend iconSize={8} wrapperStyle={{ fontSize: "10px", paddingTop: "4px" }} />
         {agentIds.map((agent, i) => (
@@ -371,7 +366,7 @@ function TeamHealthDualChart({ teamHealth }: { teamHealth: AgentActivity[] }) {
             fillOpacity={0.7} name={agent} />
         ))}
         <Line yAxisId="sessions" type="monotone" dataKey="sessions" stroke="#F59E0B"
-          strokeWidth={2} dot={false} name="Sessions" />
+          strokeWidth={2} dot={false} name={t("chart.sessions")} />
       </ComposedChart>
     </ResponsiveContainer>
   );
@@ -380,6 +375,7 @@ function TeamHealthDualChart({ teamHealth }: { teamHealth: AgentActivity[] }) {
 // ── Team Health: Per-Agent Bars ──
 
 function TeamHealthAgentBars({ teamHealth }: { teamHealth: AgentActivity[] }) {
+  const { t } = useI18n();
   const agentIds = [...new Set(teamHealth.map(a => a.agent_id))];
   const agentStats = agentIds.map(agent => {
     const rows = teamHealth.filter(a => a.agent_id === agent);
@@ -394,7 +390,7 @@ function TeamHealthAgentBars({ teamHealth }: { teamHealth: AgentActivity[] }) {
   return (
     <div>
       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-        Days Active per Agent
+        {t("goal.daysActivePerAgent")}
       </h4>
       <div className="space-y-2">
         {agentStats.map(({ agent, daaDays, totalSessions }) => (
@@ -408,8 +404,8 @@ function TeamHealthAgentBars({ teamHealth }: { teamHealth: AgentActivity[] }) {
                   opacity: 0.85,
                 }} />
             </div>
-            <span className="text-[9px] text-gray-500 w-6 shrink-0">{daaDays}d</span>
-            <span className="text-[9px] text-gray-400 w-14 shrink-0">{totalSessions} sess</span>
+            <span className="text-[9px] text-gray-500 w-6 shrink-0">{daaDays}{t("goal.daySuffix")}</span>
+            <span className="text-[9px] text-gray-400 w-14 shrink-0">{totalSessions} {t("goal.sess")}</span>
           </div>
         ))}
       </div>
@@ -420,8 +416,9 @@ function TeamHealthAgentBars({ teamHealth }: { teamHealth: AgentActivity[] }) {
 // ── Default Area Chart ──
 
 function DefaultChart({ goal, color, isPercent }: { goal: GoalSummary; color: string; isPercent: boolean }) {
+  const { lang } = useI18n();
   const chartData = goal.sparkline.map(pt => ({
-    dateLabel: formatDate(pt.date),
+    dateLabel: formatShortDate(pt.date, lang),
     value: pt.value,
   }));
   const gradientId = `grad-${goal.id}`;
@@ -461,6 +458,7 @@ interface Props {
 }
 
 export function GoalDetailSection({ goal, index, metrics, cronRuns, teamHealth }: Props) {
+  const { lang, t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
   const color = healthColor(goal.healthStatus);
   const allMetrics = Object.entries(goal.metrics);
@@ -480,13 +478,13 @@ export function GoalDetailSection({ goal, index, metrics, cronRuns, teamHealth }
       >
         {/* Section Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-800">{goal.name}</h2>
+          <h2 className="text-lg font-bold text-gray-800">{localizeGoalName(goal.name, lang)}</h2>
           {GOAL_METRIC_DEFS[goal.id] && (
             <button
               onClick={() => setShowDetails(true)}
               className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500 transition-colors cursor-pointer"
             >
-              📐 Metrics
+              📐 {t("goal.metrics")}
             </button>
           )}
         </div>
@@ -501,9 +499,9 @@ export function GoalDetailSection({ goal, index, metrics, cronRuns, teamHealth }
             <DefaultChart goal={goal} color={color} isPercent={!!isPercent} />
           ) : (
             <div className="h-full flex flex-col items-center justify-center gap-1">
-              <span className="text-sm text-gray-300">Data collection starting soon</span>
+              <span className="text-sm text-gray-300">{t("goal.dataStartingSoon")}</span>
               <span className="text-[10px] text-gray-200">
-                Run <code className="bg-gray-50 px-1.5 py-0.5 rounded">oa collect</code> daily
+                {t("goal.collectDaily")} <code className="bg-gray-50 px-1.5 py-0.5 rounded">oa collect</code>
               </span>
             </div>
           )}
@@ -523,7 +521,7 @@ export function GoalDetailSection({ goal, index, metrics, cronRuns, teamHealth }
                   {formatValue(m.value, m.unit)}
                 </span>
                 <span className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">
-                  {formatMetricName(name)}
+                  {localizeMetricName(name, lang)}
                 </span>
               </div>
             ))}
@@ -547,16 +545,16 @@ export function GoalDetailSection({ goal, index, metrics, cronRuns, teamHealth }
             >
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-800">{goal.name}</h2>
+                  <h2 className="text-lg font-bold text-gray-800">{localizeGoalName(goal.name, lang)}</h2>
                   <button onClick={() => setShowDetails(false)}
                     className="text-gray-400 hover:text-gray-600 text-lg cursor-pointer">✕</button>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Metrics Definition</h4>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("goal.metricDefinition")}</h4>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="text-[9px] text-gray-400">Datasource:</span>
+                      <span className="text-[9px] text-gray-400">{t("goal.datasource")}:</span>
                       <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
                         {GOAL_METRIC_DEFS[goal.id].datasource}
                       </span>
@@ -564,18 +562,18 @@ export function GoalDetailSection({ goal, index, metrics, cronRuns, teamHealth }
                   </div>
                   {GOAL_METRIC_DEFS[goal.id].metrics.map((m) => (
                     <div key={m.name} className="rounded-xl border border-gray-100 bg-gray-50/50 p-4 space-y-2">
-                      <h5 className="text-sm font-bold text-gray-800">{m.name}</h5>
+                      <h5 className="text-sm font-bold text-gray-800">{localizeMetricName(m.name, lang)}</h5>
                       <div className="space-y-1.5">
                         <div className="flex gap-2">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-20 shrink-0 pt-0.5">Definition</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-20 shrink-0 pt-0.5">{t("goal.definition")}</span>
                           <span className="text-xs text-gray-600">{m.definition}</span>
                         </div>
                         <div className="flex gap-2">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-20 shrink-0 pt-0.5">Calculation</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-20 shrink-0 pt-0.5">{t("goal.calculation")}</span>
                           <span className="text-xs text-gray-600 font-mono">{m.calculation}</span>
                         </div>
                         <div className="flex gap-2">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-20 shrink-0 pt-0.5">Purpose</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-20 shrink-0 pt-0.5">{t("goal.purpose")}</span>
                           <span className="text-xs text-gray-600">{m.purpose}</span>
                         </div>
                       </div>
