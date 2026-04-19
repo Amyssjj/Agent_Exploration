@@ -1,8 +1,8 @@
-# 📊 OA — Operational Analytics CLI
+# 📊 OA - Operational Analytics CLI
 
-**Operational analytics for your AI agent team — from the command line.**
+**Operational analytics for your AI agent team - from the command line.**
 
-OA gives you a live dashboard to track how your [OpenClaw](https://github.com/openclaw/openclaw) multi-agent system is actually performing. Cron reliability, agent activity, custom goals — all from data your system already generates. Zero new infrastructure required.
+OA gives you a live dashboard to track how your [OpenClaw](https://github.com/openclaw/openclaw) multi-agent system is actually performing. Cron reliability, agent activity, custom goals - all from data your system already generates. Zero new infrastructure required.
 
 ## Why OA?
 
@@ -12,23 +12,23 @@ You've got agents running cron jobs, writing to memory, processing tasks. But ho
 - Agent sessions exist, but are agents actually active?
 - Problems get logged to memory files, but nobody's tracking the trends
 
-OA reads the data OpenClaw already writes and turns it into real metrics — no new agents, no new integrations, no cloud services.
+OA reads the data OpenClaw already writes and turns it into real metrics - no new agents, no new integrations, no cloud services.
 
 ## Features
 
-- 📊 **Built-in goals** — Cron Reliability and Team Health work instantly with zero config
-- 🎯 **Custom goals** — define your own metrics via simple Python pipelines
-- 🔭 **OTel-compatible tracing** — see exactly how data flows through your system
-- 🖥️ **Live dashboard** — React UI served locally, auto-refreshes
-- 🐍 **Zero dependencies** — pure Python core, reads from SQLite
-- 🤖 **Agent-friendly** — works as an OpenClaw skill for autonomous monitoring
+- 📊 **Built-in goals** - Cron Reliability and Team Health work instantly with zero config
+- 🎯 **Custom goals** - define your own metrics via simple Python pipelines
+- 🔭 **OTel-compatible tracing** - see exactly how data flows through your system
+- 🖥️ **Live dashboard** - React UI served locally, auto-refreshes
+- 🐍 **Zero dependencies** - pure Python core, reads from SQLite
+- 🤖 **Agent-friendly** - works as an OpenClaw skill for autonomous monitoring
 
 ## Quick Start
 
 ```bash
 pip install oa-cli
 
-# Initialize — auto-detects your OpenClaw setup
+# Initialize - auto-detects your OpenClaw setup
 oa init
 
 # Collect metrics
@@ -55,7 +55,7 @@ If you're running OpenClaw, your machine already has all the data we need:
 └── agents/                       ← agent configs
 ```
 
-OA doesn't create new data — it reads what's already there.
+OA doesn't create new data - it reads what's already there.
 
 ### Step 1: Install
 
@@ -86,13 +86,13 @@ The CLI auto-detects your OpenClaw installation:
   Cron:      ✓ 6 jobs (5 enabled, 1 disabled)
 
 📊 Setting up built-in goals:
-  ✓ G1 · Cron Reliability — success rate across all cron jobs
-  ✓ G2 · Team Health — daily agent activity
+  ✓ G1 · Cron Reliability - run outcomes plus slot adherence across cron jobs
+  ✓ G2 · Team Health - daily agent activity
 
 📋 Optional goal templates:
-  [1] Knowledge Sharing — shared learnings growth
+  [1] Knowledge Sharing - shared learnings growth
   [2] Custom goal
-  [0] Skip — just use built-ins
+  [0] Skip - just use built-ins
 
   Your choice (0-2): 0
 
@@ -124,22 +124,20 @@ oa collect
 📊 Collecting data for 2026-03-15...
 
   G1 · Cron Reliability
-    ✓ Read 6 cron jobs from ~/.openclaw/cron/jobs.json
-    ✓ Scanned 234 run entries from JSONL logs
-    ✓ Matched 18 slots today → 15 success, 2 failed, 1 missed
-    ✓ Success rate: 83.3%
-    🔭 Trace: a4f2c... (6 spans)
+    ✓ success_rate: 83.3%
+    ✓ failed_runs: 2.0 count
+    ✓ unknown_runs: 1.0 count
+    expected 18 slots, observed 17 (15 exact, 2 late<=5m), missed 1, unexpected 1 run -> 15 success, 2 timeout, 1 unknown
 
   G2 · Team Health
-    ✓ Scanned 4 agents
-    ✓ 3 active today (researcher, reviewer, publisher)
-    ✓ Memory logged: 2/4 agents
-    🔭 Trace: b7e1d... (4 spans)
+    ✓ active_agent_count: 3.0 count
+    ✓ inactive_agent_count: 1.0 count
+    ✓ memory_discipline: 50.0%
 
 ✓ Results written to data/monitor.db
 ```
 
-The built-in pipelines read directly from OpenClaw's files — the same `cron/runs/*.jsonl` and session directories that already exist. No new data collection agents needed.
+The built-in pipelines read directly from OpenClaw's files - the same `cron/jobs.json`, `cron/runs/*.jsonl`, and session directories that already exist. No new data collection agents needed.
 
 ### Step 4: View Dashboard
 
@@ -157,12 +155,20 @@ oa serve
   Press Ctrl+C to stop
 ```
 
+If you're serving from outside the OA project directory, pass the config explicitly:
+
+```bash
+oa serve -c /path/to/config.yaml
+oa collect -c /path/to/config.yaml
+oa status -c /path/to/config.yaml
+```
+
 Opens your browser → live React dashboard with:
 - **Goal cards** with sparkline charts and health indicators
-- **Goal-specific charts** — stacked bar + line for Cron Reliability, DAA dual chart for Team Health
-- **Metrics definition panel** — click 📐 to see datasource, calculation, and purpose for each metric
-- **Mechanism view** — SVG flow charts showing how data moves through pipelines
-- **Click-to-expand trace details** — full execution trace with span tree and attributes
+- **Goal-specific charts** - stacked bar + line for Cron Reliability, DAA dual chart for Team Health
+- **Metrics definition panel** - click 📐 to see datasource, calculation, and purpose for each metric
+- **Mechanism view** - SVG flow charts showing how data moves through pipelines
+- **Click-to-expand trace details** - full execution trace with span tree and attributes
 
 All from real data, auto-refreshes every 30 seconds.
 
@@ -183,7 +189,7 @@ oa cron show
   }
 ```
 
-Set it and forget it — metrics collected automatically.
+Set it and forget it - metrics collected automatically.
 
 ## Built-in Goals
 
@@ -191,12 +197,29 @@ These work out of the box for any OpenClaw user. Zero configuration needed.
 
 ### G1 · Cron Reliability
 
-Tracks whether your cron jobs are actually succeeding, not just running.
+Tracks whether your cron jobs are actually succeeding and whether expected schedule slots are being hit.
 
 | Metric | Description | Source |
 |--------|-------------|--------|
-| `success_rate` | % of scheduled slots that succeeded | `~/.openclaw/cron/runs/*.jsonl` |
-| `missed_triggers` | Jobs that never ran | `~/.openclaw/cron/jobs.json` + runs |
+| `success_rate` | Successful observed runs as a percent of `max(observed runs, expected slots)` when OA can expand the schedule from `jobs.json`; otherwise `success / observed runs` | `~/.openclaw/cron/jobs.json` + `~/.openclaw/cron/runs/*.jsonl` |
+| `failed_runs` | Count of observed failed runs only (`failure`, `timeout`, `delivery_error`); missed slots are not added here | `~/.openclaw/cron/runs/*.jsonl` |
+| `unknown_runs` | Count of observed runs with unclassified status only; missed slots are not added here | `~/.openclaw/cron/runs/*.jsonl` |
+
+Schedule breakdowns are exposed in `oa collect` and in the stored metric breakdown:
+- `observed_slots` = expected slots that matched an observed run one-to-one
+- `missed` = expected slots that had no exact or unique late match
+- `unexpected_runs` = observed runs that did not match any expected slot one-to-one
+- `exact_matches` / `late_matches` = matched-slot split for explainability
+
+Slot-matching policy:
+1. Match the run to the exact expected minute for that job when possible.
+2. Otherwise allow one unique unmatched expected slot up to 5 minutes earlier.
+3. Never match early runs to future slots.
+4. If multiple earlier slots are within the grace window, leave the run unmatched and count it as unexpected.
+
+`schedule.kind=every` policy:
+- `everyMs` must be at least `60000` because slot reasoning is minute-based today.
+- If `anchorMs` is missing, OA treats it as `anchorMs=0`, so the phase comes from the Unix epoch in local wall-clock time.
 
 **Data flow:**
 ```
@@ -205,11 +228,12 @@ OpenClaw Scheduler → JSONL run logs → oa pipeline → SQLite → Dashboard
 
 ### G2 · Team Health
 
-Tracks daily agent activity — are your agents actually working?
+Tracks daily agent activity - are your agents actually working?
 
 | Metric | Description | Source |
 |--------|-------------|--------|
 | `active_agent_count` | Agents with sessions today | `~/.openclaw/sessions/` |
+| `inactive_agent_count` | Agents without a session today (lower is better) | `~/.openclaw/sessions/` |
 | `memory_discipline` | % of agents that logged to memory | Agent memory files |
 
 **Data flow:**
@@ -228,13 +252,13 @@ from oa import Pipeline, Metric
 class ContentQuality(Pipeline):
     goal_id = "content_quality"
 
-    def collect(self, date: str) -> list[Metric]:
+    def collect(self, date: str, config) -> list[Metric]:
         # Your logic — read files, APIs, whatever
         approved = count_approved_posts(date)
         total = count_total_posts(date)
         rate = approved / total * 100 if total else 0
 
-        return [Metric("approval_rate", rate, unit="%")]
+        return [Metric("approval_rate", rate, unit="%")] 
 ```
 
 Register it in `config.yaml`:
@@ -251,7 +275,10 @@ goals:
         unit: "%"
         healthy: 90
         warning: 70
+        direction: higher
 ```
+
+`direction` can be `higher` or `lower`. Use `lower` for metrics like failures, retries, or inactive agents.
 
 Run `oa collect` and your custom goal appears on the dashboard.
 
@@ -315,9 +342,11 @@ goals:
 |---------|-------------|
 | `oa init` | Auto-detect OpenClaw setup, create project |
 | `oa collect` | Run all data pipelines |
-| `oa collect --goal G1` | Run a specific pipeline |
+| `oa collect --goal cron_reliability` | Run a specific pipeline |
+| `oa collect -c path/to/config.yaml` | Run with an explicit config file |
 | `oa serve` | Start dashboard on localhost:3460 |
 | `oa serve --port 8080` | Start dashboard on custom port |
+| `oa serve -c path/to/config.yaml` | Serve a project from outside its directory |
 | `oa status` | Show current goal health (terminal) |
 | `oa cron show` | Show suggested cron schedule |
 | `oa doctor` | Check system dependencies |
@@ -352,10 +381,10 @@ No servers to maintain. No cloud services. Everything runs on your machine.
 
 ## Tracing
 
-Every data collection run produces OTel-compatible traces stored in SQLite. View them in the dashboard's **Mechanism** tab — SVG flow charts with shaped nodes (cylinder for DB, pill for cron, rectangle for scripts) and click-to-expand trace details.
+Every data collection run produces OTel-compatible traces stored in SQLite. View them in the dashboard's **Mechanism** tab - SVG flow charts with shaped nodes (cylinder for DB, pill for cron, rectangle for scripts) and click-to-expand trace details.
 
 ```python
-# Built-in tracing — automatically wraps every pipeline
+# Built-in tracing - automatically wraps every pipeline
 from oa.tracing import Tracer
 
 tracer = Tracer(service="my_pipeline")
@@ -368,12 +397,12 @@ with tracer.span("Data Collection") as span:
 
 ## Roadmap
 
-- [x] Pre-built React dashboard (static files bundled in pip package — no Node required)
+- [x] Pre-built React dashboard (static files bundled in pip package - no Node required)
 - [x] SVG flow chart trace visualization
 - [x] Goal-specific charts (stacked bar + line, dual axis, per-agent bars)
 - [x] Metrics definition panel
 - [x] GitHub Actions auto-publish via PyPI trusted publishing
-- [ ] `oa export` — export metrics to CSV/JSON
+- [ ] `oa export` - export metrics to CSV/JSON
 - [ ] More built-in goal templates (knowledge sharing, issue tracking)
 - [ ] Code-splitting for dashboard bundle optimization
 - [ ] OTel SDK export (optional, for users with existing observability)
@@ -384,13 +413,15 @@ with tracer.span("Data Collection") as span:
 ```bash
 git clone https://github.com/Amyssjj/Agent_Exploration.git
 cd Agent_Exploration/CLIs/oa-cli
-pip install -e ".[dev]"
-pytest  # 57 tests
+python3 -m pip install --user --break-system-packages -e ".[dev]"
+python3 -m pytest  # 61 tests
 ```
+
+On Ubuntu/WSL, `python3 -m venv .venv` may fail unless `python3-venv` (or `python3.12-venv`) is installed first. If you want an isolated venv, install that system package and then use the standard venv flow.
 
 ### Dashboard Development
 
-The dashboard is a React app pre-built via Vite. End users never need Node — but if you're modifying the UI:
+The dashboard is a React app pre-built via Vite. End users never need Node - but if you're modifying the UI:
 
 ```bash
 cd dashboard-src
@@ -401,4 +432,4 @@ npm run build    # Build to ../src/oa/dashboard/
 
 ## License
 
-MIT — built by [MotusAI](https://github.com/Amyssjj/Agent_Exploration)
+MIT - built by [MotusAI](https://github.com/Amyssjj/Agent_Exploration)
