@@ -1,0 +1,112 @@
+<inputs>
+Product: Digital Me by MotusAI (motusai.co/product/digital-me), a memory layer shared by all your coding agents. It applies your saved design principles before a session starts, captures what you learned, distills it overnight, and recalls it in whichever agent you open next. Message: "Agents change. Your intelligence compounds." Audience: builders who run two or more agents (Claude Code, Codex, Hermes, OpenClaw). 16:9, 24.0 s, 120 BPM, 12 bars of 4 beats.
+Every on-screen string, verbatim (mono lines keep their "$ " prompt in grey #8E8E93):
+Terminal 1: claude "pick up where we left off" / no context found · starting cold
+Headline: Every session / starts cold.
+The brief (white note, also pasted into each agent): retries: idempotent + jittered / — never naive timers
+Agents change.
+Core: Digital Me
+Session: ◆ [Digital Me] Applying "architecture_design_principles" / claude "refactor the billing retry logic" / ✓ taste attached / - setTimeout(retryCharge, 1000) / + queue.retry(charge, { key: chargeId }) / ✓ tests pass
+Verbs: Apply. / Work. / Distill. / Recall. (there is no word for Capture)
+Learning card: architecture_design_principles / + retry paths carry idempotency keys
+Seven cloud cards (icon + lesson): codex "jitter the backoff on 429s", openclaw "no naive setTimeout retries", hermes "retries must be idempotent", claude-code "expo backoff on charge retries", codex "dedupe retries by chargeId", hermes "cap retries, then alert", openclaw "retry only safe verbs"
+Rule card: Retries are idempotent and jittered — never naive timers.
+Codex: setTimeout(retry, 500) / ↳ queue.retry(…, { key }) plus the same ◆ tag chip
+Node: Digital Me
+Thesis: Agents change. / Your intelligence / compounds.
+Terminal 2: npm install -g digital-me / digital-me setup / the four agent icons / ✓ doctor green, then claude "pick up where we left off" + tag + ✓ taste attached
+Lockup: Digital Me, the MotusAI logo, motusai.co
+Colors: paper #F2F1ED (a warm off-white, not #FFF), ink #0A0A0B, terminal panel #0B0B0C, inside panels #141416 with a 2px #2A2A2D border, chips and cards #1E1E21 or #161618 with #3A3A3C or #2C2C2E borders, greys #8E8E93 #8A8A8F #AEAEB2 #C7C7CC #D1D1D6 #E5E5EA, verbs pure #FFFFFF. No hue anywhere.
+Fonts (SIL OFL, woff2 files in assets/fonts): Newsreader variable at weight 400 for all big words (tracking -0.035 to -0.04em), Inter variable at 800 for "Digital Me" (tracking -0.045em), JetBrains Mono 400 for every terminal line (30px, advance 18px).
+Brand: motusai-lockup-ink.svg (the M mark as two paths plus "OTUS" and "AI" set in Inter 800 at 132px, tracking -5.94), inlined in paper color at 36px tall.
+Agent icons: 24x24 LobeHub-format SVGs: claude-color.svg (Claude Code), openai.svg (Codex), hermesagent.svg (Hermes Agent), openclaw-color.svg (OpenClaw). They are made monochrome: Claude's #D97757, OpenClaw's gradient, #FF4D4D and #00E5CC fills become currentColor, and OpenClaw's #050810 eyes become var(--hole) = #0B0B0C. Stored as assets/icons/mono.json and drawn in #F2F1ED.
+Music: bgm_001.wav, 27 s, 44.1 kHz, from the HeyGen sounds catalog via hyperframes media-use (track 3513c7f4da434e2e9a8f41b6db2c53ff, "minimal techno lo-fi beat, driving and motivational, synth bass, 120 BPM"). Measured at 120 BPM with the beat phase at +0.03 s, so it plays from 0.03 s and every bar line lands on a state change. It has a riser from 0 to 2 s and the drop at 2.0 s.
+SFX: from the HyperFrames bundled library: click-soft, whoosh-short, pop, chime, typing, key-press, whoosh-cinematic. From assets/sfx (MotusAI's own files): motus-ending-pop.wav, ui-click-select.wav (the shutter), ui-click-computer-confirm.wav.
+Ask me for: the four icon SVGs, the three font files, the lockup SVG, bgm_001.wav (or HeyGen access to re-resolve that track id) and the three MotusAI SFX files.
+</inputs>
+
+<direction>
+Editorial and cinematic, one continuous take through one 3D world. It is never a deck. A perspective camera directs attention with extreme close-ups, 3/4 angles, orbits, crane-ups, a whip, a dive and a fly-through, and there is one subject at a time. The cursor stands for the human's attention and carries continuity. It pulls the brief out of the cold session, carries it to four agents, drops it, clicks the core, types, sweeps, and drags the learning into the dark. Then it vanishes, because Digital Me works while you sleep. It comes back to find Codex already knows, and ends with a click on motusai.co.
+Two materials. Outside Digital Me is a paper world with ink objects, and ink type standing in depth. Inside is an ink world with white type. Every region change hides inside a full frame: a dive through the solid black core into black, and a paper iris that floods out of the Digital Me node into white. Nothing cuts visibly.
+Type is minimal: one big serif word or line per state, flipped up word by word on its baseline (rotationX -95 to 0), and flipped away the same way. Everything else is real product detail in mono, sitting inside panels.
+Spring everywhere. Every move rides a damped spring (snap, slick, cam, whip, soft, bounce). Only typing is linear, and the dive accelerates on p cubed. Motion blur is driven by projected camera velocity. Depth of field blurs only the big words and cloud cards that sit off the focal plane. Panels carry soft long shadows.
+Agents appear only as their real icons, in white. Their names are never written.
+Banned: flat full-frame surfaces and deck-filling, hard cuts, any color, linear or bouncy UI easing outside the listed springs, and eyebrows and small text of any kind: the "MOTUSAI — DIGITAL ME" folio, "04 / 12" counters, a pinned Apply → Work → Capture index, captions, nameplates, title bars, labels like "Your brief" or "LEARNING CAPTURED →", and the "Open source · MIT · plain files in git" plate. Also banned: agent names as text, placeholder or monogram icons, pure-white page backgrounds, and narration.
+</direction>
+
+<structure>
+24.0 s, 120 BPM, 12 bars of 2 s (beat = 0.5 s), rendered at 30 fps. There is no black tail: the film ends on the lockup at 24.0 s.
+Bar 1, cold (0 to 2). Open on an angled extreme close-up of the Claude terminal caret (rx 4, ry -26). The camera tracks it over 0.42 s with a soft spring while claude "pick up where we left off" types in 0.36 s. At 0.5 the reply "no context found · starting cold" pops and a second caret blinks at 4 Hz. From 0.5 to 1.3 a spring pulls back to the spread: "Every session starts cold." (Newsreader 196px, two lines) stands in depth on the left, with the terminal on the right. The words flip up from 0.66, 0.07 s apart. At 1.05 "cold." greys to #8A8A8F and the command line cools to 62%. The cursor fades in at 0.95 to 1.05 and hovers the terminal. At 1.5 it clicks and the white brief note springs out of the hand (bounce, from scale 0.5 at -8°, settling at +4°).
+Bar 2, courier (2 to 4). At 1.6 a whip (camera 0.45 s, cursor 0.4 s) carries the hand and the note to a carousel. Four panels (760x420, icons at 84px) stand on a ring of radius 1500, fanned at -54, -18, 18 and 54° around a ring angle that starts at 54°. On each beat (2.0, 2.5, 3.0, 3.5) there is a click, a ripple and the same two brief lines pasted into the panel under the cursor. The ring steps 36° at 2.2, 2.7 and 3.2 (0.3 s slick), so a new agent arrives under the hand each beat. Older pastes recede to 30%.
+Bar 3, agents change (4 to 6). A crane up and back runs from 3.95 to 4.65. At 4.0 the brief falls out of the hand (y +520, z -240, rotX 70°, rotation 24°, fading out). At 4.05 "Agents change." (270px) flips up above the ring. From 4.35 to 5.4 the ring spins a full -360°. At 4.68 the pastes vanish, and at 5.2 every panel shows only an empty caret.
+Bar 4, the part that stays (6 to 8). At 5.9 the words flip away. From 5.95 to 6.7 the panels spread into four wings (x ±760, y -230 and +290, z +300, yaw ±26°, scale 0.62) while the camera settles frontal on the centre. From 6.05 the core, an ink slab 900x320 reading "Digital Me" in Inter 800 at 128px, rises 1400px on a bounce spring. At 6.5 four 6px ink beams draw from the wings into it. At 6.35 the cursor goes to the core. At 7.0 it clicks: a white sheen sweeps across, a white ring pulses out and a chime plays. The dive runs from 7.45 to 7.95, accelerating on p cubed to a dolly of 1265 and straight through the core. At 7.5 the name fades so the slab goes solid ink, at 7.85 a full-frame ink veil covers everything, and at 7.95 the background becomes ink.
+Bar 5, apply (8 to 10). Hidden in black, the camera jumps inside and springs onto a tilted session panel (1180x1180, rx 3, ry 7), which rises from z -300. "Apply." (190px, white) flips up on the left from 8.02. The cursor is now white. At 8.2 it clicks and claude "refactor the billing retry logic" types in 0.3 s. At 8.5 the prompt slides down one row as the ◆ Digital Me tag drops in from z +360 into the row above it: the context arrives before the prompt. At 9.0 "✓ taste attached" pops with a white glow.
+Bar 6, work (10 to 12). "Apply." flips away at 9.92 as the camera cranes down to the fix (rx 8). "Work." flips up at 10.0. The grey deleted line pops, a strike draws across it at 10.5, and at 10.52 the new line slides in from x +70, z +120. At 11.0 "✓ tests pass" pops and glows with the confirm sound. At 11.2 the cursor lands on "key", and at 11.5 it sweeps across "key: chargeId" while a white wash grows under it.
+Bar 7, capture (12 to 14). "Work." flips away at 11.9 as the camera pushes into an extreme close-up of the new line (dolly 470). At 12.0 corner brackets snap around the line. At 12.5 the shutter fires: the line pulses to 1.04 under a 45% white flash. At 12.55 the learning card (Claude icon) lifts off the line. From 12.7 the camera eases back to the card, and at 13.0 the card glows. At 13.5 the cursor grabs it (tilt -3°, scale 1.05). From 13.55 to 14.1 it drags the card into the dark with the camera locked to the card (ry -16). At 13.75 the session dims to 20%, and from 13.8 the seven capture cards pop into a cloud. From 14.15 to 14.45 the cursor fades out: you are asleep.
+Bar 8, distill (14 to 16). From 14.25 to 14.95 the camera flies into the cloud (dolly 230), with depth of field blurring the far cards. At 14.15 "Distill." (250px) flips up above. At 14.5 the cards converge, and at 14.74 they are gone. At 14.72 one card springs up from scale 0.55, and at 14.75 it flips 180° on Y. Its back is paper, carrying the rule in Newsreader 64px ink. At 15.15 an ink underline draws under the first 62%.
+Bar 9, recall (16 to 18). At 15.88 "Distill." flips away and the rule card drops back (scale 0.62, z -400). From 15.9 a whip carries the camera to the Codex panel (1120x620, yawed -14°, OpenAI icon), which springs in from x +260. At 15.92 the tag chip flies from the rule card and docks in Codex. At 16.3 "Recall." (220px) flips up above. At 16.5 the naive line pops. The cursor returns at 16.55, a wash sweeps the naive line at 16.72, and at 16.95 the suggestion slides in and glows: Codex already knows.
+Bar 10, thesis (18 to 20). From 17.9 to 18.05 the cursor fades. From 18.0 to 18.75 the camera cranes far out (rx 16, dolly -3600) to the constellation. The session returns to full. From 18.05 the "Digital Me" node (980x320, #161618, 4px white border, Inter 800 at 136px) bounces in above, and three 16px white links draw from it to the session, the stack and Codex. Also at 18.05 the screen-fixed overlay "Agents change." (104px, white, at left 140, top 190) flips up. At 18.48 a paper disc centred on the node's projection scales x26 in 0.42 s and floods the frame. At 18.62 "Agents change." greys to #8A8A8F. At 18.9 the background turns to paper and the camera jumps outside. At 18.8 "Your intelligence / compounds." (206px, ink) flips up, and at 19.25 an ink underline draws under "compounds.". The bed dips through a 650 Hz lowpass at 0.8 volume from 18.05 to 18.5 and opens again by 18.95.
+Bar 11, install (20 to 22). At 19.95 the thesis flips away. At 20.0 the Claude terminal flies in from z -2600 (rotY 34°, rotX 8°, 0.8 s slick) while the camera makes a slow soft orbit (ry -18 to -7) until 21.9. At 20.1 the cursor appears. npm install -g digital-me types at 20.12, and digital-me setup at 20.5. From 21.0 the four icons (50px) bounce in 0.06 s apart. At 21.3 "✓ doctor green" pops and glows.
+Bar 12, warm start (22 to 24). The camera squares up from 22.0 to 22.6. The setup rows lift away, the command clears, and at 22.08 claude "pick up where we left off" retypes. At 22.5 the prompt slides down as the tag drops in from z +320, and at 22.64 "✓ taste attached" appears: this time it starts warm. At 23.0 the terminal flips 180° on Y (0.7 s snap) while the camera breathes back to a dolly of -160. The back is the lockup: "Digital Me" in Inter 800 at 150px, with the MotusAI logo and motusai.co below. At 23.1 the cursor moves to motusai.co, and at 23.5 it clicks with a ripple and the ending pop. The bed fades out from 23.55 to 24.0.
+</structure>
+
+<build>
+1. HyperFrames 0.8.77 project (npx hyperframes init digital-me-24s-cinematic --example=blank --skill=general-video), 1920x1080, 30 fps, 24 s. The film is one index.html generated by tools/build.mjs (node tools/build.mjs). Keep all numbers in that script and emit the HTML, CSS and a DATA JSON from it. Load GSAP 3.14.2 plus TextPlugin from jsdelivr. #root has data-composition-id="main". There is one paused gsap.timeline, and a single linear driver tween (t from 0 to 24) calls frame(t) in onUpdate. Register it with window.__timelines["main"] = tl. frame(t) owns every 3D placement and must be a pure function of t. GSAP animates only inner nodes, for the pops, flips, types, glows and washes.
+2. Lens and world: #stage has perspective 1400px with its origin at 960 540. #world is a zero-size preserve-3d node at 960,540, with y down and z toward the viewer. The camera is analytic. Each key is a target point q, angles rx ry rz, and a dolly zc. The world gets translate3d(-M·q + (0,0,zc)) rotateZ rotateX rotateY, where M is that rotation matrix. Each key is a leg {t, d, ease} that springs from the previous value, and d = 0 is a jump that only happens inside full black or white.
+3. Springs are the damped-oscillator step response f(t) = 1 - e^(-zwt)(cos wd·t + (zw/wd) sin wd·t), evaluated over progress 0 to 1 and corrected linearly so that f(1) = 1: snap (0.55, 12), slick (0.72, 11), cam (0.9, 9), whip (0.94, 12.5), soft (0.9, 7), bounce (0.45, 13). The dive uses p cubed and typing uses linear.
+4. World anchors: T1 (540,0,0) 1060x440. Headline (-660,-20,-420). Ring centre (3300,40,-1300), radius 1500. "Agents change." (3300,-520,300). Inside origin (0,12000). Session centre (560,12300,0), 1180x1180, with row tops tag 180, prompt 180 moving to 262, taste 344, deleted 488, added 570, pass 668. Verbs: Apply (-300,11972,60), Work (-280,12260,60), Distill (3600,12100,-1360), Recall (6280,12025,-840). Cloud (3600,12500,-1400), with the stack at z -1100 and card offsets (650,-380,-200), (-900,260,-600), (800,300,200), (-250,-540,-900), (300,560,-700), (-1150,-80,-1250) and (1150,40,-1150). Codex (6300,12420,-900). Node (3600,10850,-1400). Outside origin (0,24000), where T2 is 1060x470.
+5. Camera keys as t / d / ease -> q / rx ry / zc. The start is the caret on T1 at (482,-58,0), 4 -26, 640.
+0/.42/soft -> (706,-58,0) 4 -24 640, with blur x0.15
+.5/.8/cam -> (40,-10,-180) 0 -6 -470
+1.6/.45/whip -> (3300,50,200) 5 0 40
+3.95/.7/cam -> (3300,-190,0) 12 0 -500
+5.95/.7/cam -> (3300,40,-1240) 4 0 -520
+7.45/.5/dive -> (3300,40,-1300) 0 0 1265
+7.95/jump -> (240,12002,0) 3 7 460
+7.96/.65/cam -> the same q, 3 7 90
+9.95/.6/cam -> (260,12290,0) 8 6 110
+11.95/.5/cam -> (394,12310,0) 4 5 470
+12.7/.6/cam -> (430,12430,150) 4 4 170
+13.55/.55/slick -> (3120,12560,-400) 0 -16 60
+14.25/.7/cam -> (3600,12500,-1100) 0 0 230
+15.9/.6/whip -> (6300,12340,-900) 2 10 140
+18.0/.75/cam -> (3600,11580,-1100) 16 0 -3600
+18.9/jump -> (40,24000,0) 5 -18 40
+20.0/1.9/soft -> (20,24010,0) 3 -7 170
+22.0/.6/cam -> (0,24000,0) 0 0 80
+23.0/.7/cam -> (0,24010,0) 0 0 -160
+6. Cursor: a 40x52 SVG arrow outside the 3D world. Its world point is projected every frame, so it keeps a constant size. Paper mode is an ink fill with a 2px white stroke. From 7.9 to 18.9 it crossfades to ink mode, a white fill with an ink stroke. It has a drop shadow. On each click (1.5, 2.0, 2.5, 3.0, 3.5, 7.0, 8.2, 11.5, 13.5, 23.5) it dips 20% on a damped cosine over 0.32 s. Its keys are world points on slick springs, apart from the 0.4 s whip to the carousel. The note (from 1.5 to 4.0) and the learning card (from 13.5 to 14.1) are placed at fixed offsets from the cursor point, so they travel with the hand.
+7. Carousel: panel k sits at ring angle phi + fan[k], blended into its wing pose by the spread value. Beams and constellation links are 1px-wide boxes scaled along X and aimed with rotateY and rotateZ computed from their endpoints.
+8. Motion blur: an SVG feGaussianBlur on #lens, a 2D wrapper above the perspective stage. Take the mean screen displacement over 1/30 s of five probes (q, ±320 x, ±240 y), multiply by 0.18 and the leg's blur factor, clamp at 22px, and apply separate x and y deviations only above 1.6px, never on jump frames. Depth of field: every big word and cloud card carries its world point, and gets blur(clamp(|z_cam - zc| × 0.011 - 1.2, 0, 12)px) when that is over 0.3.
+9. Regions: the paper-1 set is visible when t < 7.97, the ink set when 7.94 ≤ t < 18.95, and paper-2 when t ≥ 18.88. The rule card's back face shows from 14.86, T2's back from 23.12, T2's front until 23.3, and the iris only from 18.45 to 19.0. The background flips to ink at 7.95 and to paper at 18.9.
+10. Audio as HyperFrames audio tags. The bed is on track 10 with data-media-start 0.03, volume 0.7, a lowpass fx-chain, and automation: frequency 20000, then 650 from 18.05 to 18.5, then 20000 by 18.95; volume 1, then 0.8 over the same window, then 0 from 23.55 to 24.0. Put the SFX on tracks 11 and up, as time/duration/volume:
+type 0/.4/.45, key .5/.3/.35, whoosh .55/.5/.25, pop 1.5/.5/.35, whoosh 1.58/.55/.5
+key 2.0, 2.5, 3.0, 3.5 each /.3/.45, whoosh 2.2, 2.7, 3.2 each /.4/.2
+whoosh 3.95/.55/.3, pop 4.05/.5/.3, whoosh 4.35/.55/.45, whoosh 5.95/.55/.35, pop 6.1/.5/.4
+click 7.0/.3/.5, chime 7.02/1.2/.7, cinematic whoosh 7.2/1.0/.5 (media start 1.95)
+click 8.2/.3/.45, type 8.22/.32/.45, pop 8.52/.5/.3, whoosh 9.95/.5/.25, confirm 11.0/.8/.45, click 11.5/.3/.35, whoosh 11.95/.4/.2, shutter 12.5/.6/.45
+click 13.5/.3/.45, whoosh 13.56/.55/.35, whoosh 14.25/.5/.3, pop 14.74/.5/.35, whoosh 15.88/.55/.4, pop 16.46/.5/.35, key 16.97/.3/.3, whoosh 18.0/.55/.3
+cinematic whoosh 18.2/.9/.35 (media start 2.0), whoosh 20.0/.6/.35, type 20.12/.3/.45, type 20.5/.2/.45, pop 21.0/.5/.3, confirm 21.3/.8/.5
+type 22.08/.26/.45, pop 22.52/.5/.3, whoosh 23.0/.5/.35, click 23.5/.3/.5, ending pop 23.5/.18/.6
+There is no loudnorm pass. The mix measures -13.4 LUFS integrated with a true peak around -1.6 dBFS.
+11. Validate with npx hyperframes check (lint, layout and contrast), then snapshot about 30 frames: npx hyperframes snapshot --at 0.15,0.45,1.3,2.0,... --no-end --describe false --timeout 25000 -o snapshots/v2x. Read the contact sheets. For framing, node tools/build.mjs --probe '{"name":[x,y,z]}' 8.6,10.8 prints projected screen points, which is how the verbs are kept in clear space and inside the frame.
+12. Render: npx hyperframes render -o renders/digital-me-24s-cinematic-v2-1080p.mp4 --quality delivery --skill general-video (about 22 s). The result is H.264 High, yuv420p, 1920x1080, 30 fps, about 2.1 Mb/s, with AAC-LC 48 kHz stereo at about 198 kb/s, 24.000 s long. Make the 720p copy with ffmpeg -vf scale=1280:720:flags=lanczos -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 192k -movflags +faststart. Then pull 20 frames from the MP4 into a contact sheet and check them.
+</build>
+
+<gotchas>
+Region visibility set with GSAP tl.set was wrong after out-of-order seeks in Studio and in the renderer. Compute every visibility window inside frame(t) from t alone.
+Never let GSAP and frame() write the same element. Wrappers with class .obj are placed by frame() or by a static transform, and GSAP only touches their children.
+Don't read offsetWidth inside frame(). Give cursor followers fixed sizes (520x170 and 700x160).
+hyperframes check flags intentionally layered text (stacked pastes, note lines, card text) as content_overlap errors. Put data-layout-allow-overlap on each text element, not only on the wrapper, and allow overflow, overlap and occlusion on #world. The composition_file_too_large warning is accepted for a single take. The contrast audit sees 0 texts in 3D, so judge contrast by eye.
+The first dive, on a whip spring, overshot and landed on grey. Accelerate on p cubed, fade the core name, and cover 7.85 to 7.96 with a full ink veil before switching regions. Do camera jumps only inside that black and inside the paper iris.
+Flip cards need backface-visibility hidden plus explicit visibility windows for each face, or both faces bleed through.
+Motion blur goes on a 2D wrapper above the perspective stage, never on the preserve-3d world. Depth-of-field blur goes only on leaf elements.
+hyperframes render has no 720p preset (presets only scale up). Render 1080p and downscale.
+Live Studio playback stutters on the blur-heavy moments (the whips, the dive, the cloud). Judge timing from snapshots or a render.
+The 720p file measured a true peak of -0.7 dBTP, slightly hot. Pull the bed down 0.5 dB if the platform re-encodes.
+The agent marks belong to Anthropic, OpenAI, Hermes Agent and OpenClaw. Use them only to identify supported agents, and use their official files. This film recolored them to monochrome to hold the black-and-white palette, so check each brand's guidelines before shipping. The fonts are OFL. The bed is under HeyGen's sounds-library license, and the SFX are the HyperFrames bundled set plus MotusAI's own files.
+</gotchas>
+
+<start>
+Confirm you have the four icon SVGs, the three fonts, the lockup, bgm_001.wav and the SFX, and ask me for anything missing. Then write tools/build.mjs with the anchors and the camera and cursor keys above. Generate index.html, run hyperframes check, and show me a contact sheet of about 30 frames (at least one per beat-event cluster, including 7.7 to 7.97 for the dive and 18.3 to 18.9 for the iris) before rendering. Render only after I approve the preview.
+</start>
