@@ -1,5 +1,7 @@
 # Setup questions
 
+**Say this first:** This automation pulls your WeRead highlights and your own reviews into Notion pages under a parent you configure.
+
 Ask these before you write `Skill_微信读书ToNotion`. A routine exists only if they want a schedule.
 
 ## Required

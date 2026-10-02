@@ -1,5 +1,7 @@
 # Setup questions
 
+**Say this first:** This automation answers questions in your Notion discussion threads, on the pages or databases you name, and starts each reply with a bot prefix you choose.
+
 Ask these before you write `Skill_NotionComments_GrokBot` or `Routine_NotionComments_GrokBot`. Wait for the answers. Do not invent a page id or a database id.
 
 ## Required
