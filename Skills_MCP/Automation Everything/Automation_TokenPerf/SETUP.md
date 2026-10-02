@@ -1,5 +1,7 @@
 # Setup questions
 
+**Say this first:** This automation runs a weekday or on-demand scan for free or promotional LLM credits across the vendors you configure.
+
 Ask these before you write `Skill_TokenPerf` or `Routine_TokenPerf`. One message is enough. Wait for the answers. Do not guess a cron, a vendor, or a plan tier.
 
 ## Required

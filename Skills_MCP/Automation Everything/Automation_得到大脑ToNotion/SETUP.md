@@ -1,5 +1,7 @@
 # Setup questions
 
+**Say this first:** This automation pulls your 得到大脑 notes with the getnote CLI and lands them as Notion pages under a parent you configure.
+
 Ask these before you write `Skill_得到大脑ToNotion`. A routine exists only if they want a schedule.
 
 ## Required
