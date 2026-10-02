@@ -1,0 +1,8 @@
+{
+  "bot_tag": "[Bot]",
+  "wake_mode": "SET_AFTER_INTERVIEW",
+  "cron": "SET_AFTER_INTERVIEW",
+  "timezone": "SET_AFTER_INTERVIEW",
+  "watch_scope": "SET_AFTER_INTERVIEW",
+  "NOTION_PARENT_DATA_SOURCE_ID": "YOUR_PARENT_DATA_SOURCE_ID"
+}

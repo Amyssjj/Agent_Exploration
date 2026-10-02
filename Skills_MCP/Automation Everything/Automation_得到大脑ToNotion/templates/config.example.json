@@ -1,0 +1,8 @@
+{
+  "NOTION_PARENT_DATA_SOURCE_ID": "YOUR_PARENT_DATA_SOURCE_ID",
+  "NOTION_PARENT_PAGE_ID": "",
+  "title_property": "Title",
+  "pull_rule": "SET_AFTER_INTERVIEW",
+  "cron": "none",
+  "timezone": "SET_AFTER_INTERVIEW"
+}
