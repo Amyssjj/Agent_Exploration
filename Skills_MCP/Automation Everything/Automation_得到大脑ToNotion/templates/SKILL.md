@@ -20,7 +20,7 @@ Pull notes with the `getnote` CLI (`gnote` is the same binary) and land them in 
 | --- | --- |
 | Parent kind | `{{PARENT_KIND}}` |
 | Parent id | `{{PARENT_ID}}` |
-| Title property | `{{TITLE_PROPERTY}}` |
+| Title property | `title` when the parent is a `page_id`. `{{TITLE_PROPERTY}}` only when the parent is a `data_source_id`. |
 | Pull rule | {{PULL_RULE}} |
 | Routine | `{{CRON}}` |
 
@@ -83,19 +83,25 @@ Do this when they asked to put the note in Notion.
 1. Resolve the note with the pull rule: {{PULL_RULE}}
 2. Write `pulled/<note_id>.md`.
 3. If `notion-map.json` already has this `note_id`, `notion-update-page`. Otherwise `notion-create-pages` under the parent.
-4. Title property: `{{TITLE_PROPERTY}}`.
+4. Set the title from the parent kind. A `page_id` parent always uses the lowercase property `title`. A `data_source_id` parent uses `{{TITLE_PROPERTY}}`, the name confirmed against that database. Do not send `{{TITLE_PROPERTY}}` on a page parent, even when the interview default was `Title`.
 5. Record the Notion URL in `notion-map.json`. Do not commit the map.
 
-Parent when kind is `data_source_id`:
+Database parent (`data_source_id`). Properties use the interviewed title property:
 
 ```json
-{ "type": "data_source_id", "data_source_id": "{{PARENT_ID}}" }
+{
+  "parent": { "type": "data_source_id", "data_source_id": "{{PARENT_ID}}" },
+  "properties": { "{{TITLE_PROPERTY}}": "<note title>" }
+}
 ```
 
-Parent when kind is `page_id`:
+Page parent (`page_id`). The title property is unconditionally `title`:
 
 ```json
-{ "type": "page_id", "page_id": "{{PARENT_ID}}" }
+{
+  "parent": { "type": "page_id", "page_id": "{{PARENT_ID}}" },
+  "properties": { "title": "<note title>" }
+}
 ```
 
 Fetch `notion://docs/enhanced-markdown-spec` before enhanced markdown. Omit signed attachment URLs from the page body.

@@ -62,7 +62,7 @@ Next page: `lastSort` is the last book's `sort`. If a response contains `upgrade
 
 ## Prepare helper
 
-`prepare.py` in this skill folder writes `prepared/<bookId>.json`. Those files are gitignored.
+`prepare.py` in this skill folder writes `prepared/<bookId>.json`. Those files are gitignored. A non-zero `errcode` fails that call. `upgrade_info` stops the whole run instead of being stored as a per-book error.
 
 ```bash
 python3 prepare.py --limit {{LIMIT}}
