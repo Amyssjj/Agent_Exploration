@@ -5,5 +5,8 @@
   "category_property": "Category",
   "category_value": "Reading",
   "skill_version": "1.0.4",
-  "max_body_chars": 100000
+  "max_body_chars": 100000,
+  "default_limit": 5,
+  "cron": "none",
+  "timezone": "SET_AFTER_INTERVIEW"
 }

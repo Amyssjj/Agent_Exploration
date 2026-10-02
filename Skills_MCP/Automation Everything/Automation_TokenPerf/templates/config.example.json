@@ -1,0 +1,32 @@
+{
+  "cron": "SET_AFTER_INTERVIEW",
+  "timezone": "SET_AFTER_INTERVIEW",
+  "quiet_when_unchanged": true,
+  "claim_requires_approval": true,
+  "vendors": [
+    {
+      "id": "anthropic",
+      "label": "Anthropic / Claude",
+      "plan_tier": "set-your-plan",
+      "enabled": false
+    },
+    {
+      "id": "openai",
+      "label": "OpenAI / ChatGPT / Codex",
+      "plan_tier": "set-your-plan",
+      "enabled": false
+    },
+    {
+      "id": "xai",
+      "label": "xAI / Grok",
+      "plan_tier": "set-your-plan",
+      "enabled": false
+    },
+    {
+      "id": "google",
+      "label": "Google / Gemini",
+      "plan_tier": "set-your-plan",
+      "enabled": false
+    }
+  ]
+}
