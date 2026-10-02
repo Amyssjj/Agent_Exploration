@@ -52,6 +52,10 @@ _SECRET_RE = re.compile(
 )
 
 
+class WeReadUpgradeRequired(RuntimeError):
+    """Gateway returned upgrade_info. Callers must stop the whole run."""
+
+
 def redact(text: str, limit: int = 500) -> str:
     cleaned = _SECRET_RE.sub(
         lambda m: "Bearer [redacted]" if m.group(0).lower().startswith("bearer") else "[redacted]",
@@ -93,6 +97,37 @@ def load_api_key() -> str:
     return key
 
 
+def gateway_payload(api_name: str, data: Any) -> dict:
+    """Validate a decoded gateway body. HTTP 200 can still be a business error."""
+    if not isinstance(data, dict):
+        raise RuntimeError(f"WeRead {api_name}: response was not a JSON object")
+    upgrade = data.get("upgrade_info")
+    if "upgrade_info" in data and upgrade not in (None, False, "", 0):
+        message = ""
+        if isinstance(upgrade, dict):
+            message = str(upgrade.get("message") or "")
+        else:
+            message = str(upgrade)
+        detail = redact(message)
+        extra = f" {detail}" if detail else ""
+        raise WeReadUpgradeRequired(
+            f"WeRead {api_name} requires an upgrade before continuing.{extra}"
+        )
+    errcode = data.get("errcode", 0)
+    try:
+        code = int(errcode) if errcode not in (None, "") else 0
+    except (TypeError, ValueError):
+        code = -1
+    if code != 0:
+        summary = {
+            "errcode": code,
+            "errmsg": data.get("errmsg") or data.get("message") or data.get("errMsg") or "",
+        }
+        detail = redact(json.dumps(summary, ensure_ascii=False))
+        raise RuntimeError(f"WeRead {api_name} errcode {code}: {detail}")
+    return data
+
+
 def weread_call(api_key: str, skill_version: str, api_name: str, **params: Any) -> dict:
     body = {"api_name": api_name, "skill_version": skill_version, **params}
     req = urllib.request.Request(
@@ -106,10 +141,15 @@ def weread_call(api_key: str, skill_version: str, api_name: str, **params: Any) 
     )
     try:
         with urllib.request.urlopen(req, timeout=90) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            raw = resp.read().decode("utf-8")
     except urllib.error.HTTPError as e:
         err_body = redact(e.read().decode("utf-8", errors="replace"))
         raise RuntimeError(f"WeRead {api_name} HTTP {e.code}: {err_body}") from e
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"WeRead {api_name}: response was not JSON") from e
+    return gateway_payload(api_name, decoded)
 
 
 def fetch_all_notebooks(api_key: str, skill_version: str) -> list[dict]:
@@ -317,6 +357,63 @@ def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def choose_books(
+    metas: list[dict],
+    *,
+    limit: int,
+    book_ids: list[str] | None,
+    synced: dict,
+    skip_titles: set[str],
+    skip_synced: bool,
+) -> tuple[list[dict], list[dict]]:
+    """Choose notebooks to prepare.
+
+    Already-synced titles and skipped titles are removed before --limit is
+    applied, so a full page of synced top-ranked books does not hide the next
+    unsynced notebook.
+    """
+
+    def score(meta: dict) -> int:
+        return int(meta.get("noteCount") or 0) + int(meta.get("reviewCount") or 0)
+
+    def ineligible(meta: dict) -> str | None:
+        if skip_synced and meta["bookId"] in synced:
+            return "already_in_manifest"
+        if meta["title"] in skip_titles:
+            return "title_exists_in_notion"
+        return None
+
+    def skip_entry(meta: dict, reason: str) -> dict:
+        entry = {
+            "bookId": meta["bookId"],
+            "title": meta["title"],
+            "author": meta.get("author") or "",
+            "score": score(meta),
+            "reason": reason,
+        }
+        if reason == "already_in_manifest":
+            entry["notion_url"] = (synced.get(meta["bookId"]) or {}).get("notion_url")
+        return entry
+
+    skipped: list[dict] = []
+    if book_ids:
+        want = set(book_ids)
+        pool = [m for m in metas if m["bookId"] in want]
+    else:
+        pool = sorted(metas, key=lambda m: -score(m))
+
+    chosen: list[dict] = []
+    for meta in pool:
+        if book_ids is None and len(chosen) >= limit:
+            break
+        reason = ineligible(meta)
+        if reason:
+            skipped.append(skip_entry(meta, reason))
+            continue
+        chosen.append(meta)
+    return chosen, skipped
+
+
 def prepare_pages(
     api_key: str,
     cfg: dict[str, Any],
@@ -334,12 +431,14 @@ def prepare_pages(
     metas = [book_meta(nb) for nb in notebooks]
     metas = [m for m in metas if m["bookId"] and m["title"]]
 
-    if book_ids:
-        want = set(book_ids)
-        selected = [m for m in metas if m["bookId"] in want]
-    else:
-        metas_sorted = sorted(metas, key=lambda m: -(m["noteCount"] + m["reviewCount"]))
-        selected = metas_sorted[:limit]
+    selected, skipped = choose_books(
+        metas,
+        limit=limit,
+        book_ids=book_ids,
+        synced=synced,
+        skip_titles=skip_titles,
+        skip_synced=skip_synced,
+    )
 
     PREPARED_DIR.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = {
@@ -348,7 +447,7 @@ def prepare_pages(
         "parent_configured": cfg["parent_configured"],
         "selected": [],
         "prepared": [],
-        "skipped": [],
+        "skipped": skipped,
         "errors": [],
     }
 
@@ -360,19 +459,6 @@ def prepare_pages(
             "score": meta["noteCount"] + meta["reviewCount"],
         }
         report["selected"].append(entry)
-
-        if skip_synced and meta["bookId"] in synced:
-            report["skipped"].append(
-                {
-                    **entry,
-                    "reason": "already_in_manifest",
-                    "notion_url": synced[meta["bookId"]].get("notion_url"),
-                }
-            )
-            continue
-        if meta["title"] in skip_titles:
-            report["skipped"].append({**entry, "reason": "title_exists_in_notion"})
-            continue
 
         try:
             marks, chapter_map = fetch_bookmarks(api_key, skill_version, meta["bookId"])
@@ -401,6 +487,8 @@ def prepare_pages(
             )
             report["prepared"].append({**entry, "path": str(out_path.name), "stats": stats})
             time.sleep(0.3)
+        except WeReadUpgradeRequired:
+            raise
         except Exception as e:  # noqa: BLE001
             report["errors"].append({**entry, "error": redact(str(e))})
 
@@ -429,8 +517,231 @@ def mark_synced(book_id: str, title: str, notion_url: str) -> None:
     save_state(state)
 
 
+def _fake_http_200(payload: dict) -> Any:
+    class _Resp:
+        def read(self) -> bytes:
+            return json.dumps(payload).encode("utf-8")
+
+        def __enter__(self) -> "_Resp":
+            return self
+
+        def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+            return False
+
+    return _Resp()
+
+
+def _example_notebook(book_id: str, title: str, notes: int) -> dict:
+    return {
+        "bookId": book_id,
+        "noteCount": notes,
+        "reviewCount": 0,
+        "bookmarkCount": 0,
+        "book": {"bookId": book_id, "title": title, "author": "Example", "cover": ""},
+    }
+
+
+def _check_gateway_http() -> None:
+    """HTTP 200 with errcode or upgrade_info must not look like an empty success."""
+    import unittest.mock as mock
+
+    secret_body = {
+        "errcode": -2012,
+        "errmsg": "bad Bearer wrk-supersecretvalue",
+        "books": [],
+    }
+    for api_name in ("/user/notebooks", "/book/bookmarklist", "/review/list/mine"):
+        with mock.patch(
+            "urllib.request.urlopen",
+            return_value=_fake_http_200(secret_body),
+        ):
+            try:
+                weread_call("example-key", "1.0.4", api_name)
+            except WeReadUpgradeRequired as e:
+                raise SystemExit(f"self-check failed: errcode raised upgrade ({e})") from e
+            except RuntimeError as e:
+                message = str(e)
+            else:
+                raise SystemExit(f"self-check failed: {api_name} errcode treated as success")
+        if "wrk-" in message or "supersecret" in message:
+            raise SystemExit("self-check failed: secret leaked from errcode body")
+        if "errcode -2012" not in message:
+            raise SystemExit(f"self-check failed: errcode missing from {message}")
+
+    upgrade_body = {
+        "errcode": 12,
+        "upgrade_info": {"message": "Upgrade before continuing. Bearer wrk-supersecretvalue"},
+    }
+    with mock.patch("urllib.request.urlopen", return_value=_fake_http_200(upgrade_body)):
+        try:
+            weread_call("example-key", "1.0.4", "/book/bookmarklist", bookId="example-book")
+        except WeReadUpgradeRequired as e:
+            upgrade_message = str(e)
+        else:
+            raise SystemExit("self-check failed: upgrade_info was ignored")
+    if "wrk-" in upgrade_message or "supersecret" in upgrade_message:
+        raise SystemExit("self-check failed: secret leaked from upgrade_info")
+    if "upgrade" not in upgrade_message.lower():
+        raise SystemExit("self-check failed: upgrade error did not name the stop")
+
+
+def _check_upgrade_stops_run() -> None:
+    """upgrade_info from a per-book call must leave prepare_pages, not the error list."""
+    import tempfile
+    import unittest.mock as mock
+
+    notebooks = [_example_notebook("example-a", "Example A", 3), _example_notebook("example-b", "Example B", 1)]
+    calls: list[str] = []
+
+    def fake_call(api_key: str, skill_version: str, api_name: str, **params: Any) -> dict:
+        calls.append(api_name + ":" + str(params.get("bookId") or params.get("bookid") or ""))
+        if api_name == "/user/notebooks":
+            return {"books": notebooks, "hasMore": 0}
+        if api_name == "/book/bookmarklist" and params.get("bookId") == "example-a":
+            raise WeReadUpgradeRequired("WeRead /book/bookmarklist requires an upgrade before continuing.")
+        raise AssertionError(f"unexpected call after upgrade: {api_name} {params}")
+
+    cfg = load_config()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        old = (STATE_PATH, PREPARED_DIR, REPORT_PATH)
+        try:
+            globals()["STATE_PATH"] = root / "state.json"
+            globals()["PREPARED_DIR"] = root / "prepared"
+            globals()["REPORT_PATH"] = root / "last_report.json"
+            with mock.patch(f"{__name__}.weread_call", side_effect=fake_call):
+                try:
+                    prepare_pages("example-key", cfg, limit=5, book_ids=None, skip_titles=set(), skip_synced=True)
+                except WeReadUpgradeRequired:
+                    pass
+                else:
+                    raise SystemExit("self-check failed: upgrade_info was swallowed")
+        finally:
+            globals()["STATE_PATH"], globals()["PREPARED_DIR"], globals()["REPORT_PATH"] = old
+    if any(item.endswith("example-b") for item in calls):
+        raise SystemExit("self-check failed: run continued after upgrade_info")
+
+
+def _check_errcode_stays_on_that_book() -> None:
+    """A non-zero errcode fails that book and the run continues."""
+    import tempfile
+    import unittest.mock as mock
+
+    notebooks = [
+        _example_notebook("example-a", "Example A", 4),
+        _example_notebook("example-b", "Example B", 2),
+    ]
+
+    def fake_call(api_key: str, skill_version: str, api_name: str, **params: Any) -> dict:
+        if api_name == "/user/notebooks":
+            return {"books": notebooks, "hasMore": 0}
+        if api_name == "/book/bookmarklist" and params.get("bookId") == "example-a":
+            raise RuntimeError('WeRead /book/bookmarklist errcode -2012: {"errmsg": "[redacted]"}')
+        if api_name == "/book/bookmarklist":
+            return {"updated": [], "chapters": []}
+        if api_name == "/review/list/mine":
+            return {"reviews": [], "hasMore": 0}
+        raise AssertionError(api_name)
+
+    cfg = load_config()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        old = (STATE_PATH, PREPARED_DIR, REPORT_PATH)
+        try:
+            globals()["STATE_PATH"] = root / "state.json"
+            globals()["PREPARED_DIR"] = root / "prepared"
+            globals()["REPORT_PATH"] = root / "last_report.json"
+            with mock.patch(f"{__name__}.weread_call", side_effect=fake_call):
+                report = prepare_pages(
+                    "example-key",
+                    cfg,
+                    limit=5,
+                    book_ids=None,
+                    skip_titles=set(),
+                    skip_synced=True,
+                )
+        finally:
+            globals()["STATE_PATH"], globals()["PREPARED_DIR"], globals()["REPORT_PATH"] = old
+    if [e["bookId"] for e in report["errors"]] != ["example-a"]:
+        raise SystemExit(f"self-check failed: errcode did not stay on one book ({report['errors']})")
+    if [p["bookId"] for p in report["prepared"]] != ["example-b"]:
+        raise SystemExit("self-check failed: later book was not prepared after errcode")
+
+
+def _check_limit_skips_synced_first() -> None:
+    """Top-ranked synced books must not consume --limit."""
+    metas = [
+        book_meta(_example_notebook(f"example-{i}", f"Example {i}", 50 - i))
+        for i in range(6)
+    ]
+    synced = {f"example-{i}": {"notion_url": "https://www.notion.so/example"} for i in range(5)}
+    chosen, skipped = choose_books(
+        metas,
+        limit=5,
+        book_ids=None,
+        synced=synced,
+        skip_titles=set(),
+        skip_synced=True,
+    )
+    chosen_ids = [m["bookId"] for m in chosen]
+    if chosen_ids != ["example-5"]:
+        raise SystemExit(f"self-check failed: limit ate synced books, chose {chosen_ids}")
+    if {s["bookId"] for s in skipped} != {f"example-{i}" for i in range(5)}:
+        raise SystemExit("self-check failed: synced books were not recorded as skipped")
+
+    import tempfile
+    import unittest.mock as mock
+
+    fetched: list[str] = []
+
+    def fake_call(api_key: str, skill_version: str, api_name: str, **params: Any) -> dict:
+        if api_name == "/user/notebooks":
+            return {"books": [_example_notebook(m["bookId"], m["title"], m["noteCount"]) for m in metas], "hasMore": 0}
+        if api_name == "/book/bookmarklist":
+            fetched.append(str(params.get("bookId")))
+            return {
+                "updated": [
+                    {
+                        "markText": "Example highlight sentence.",
+                        "chapterUid": 1,
+                        "createTime": 1,
+                    }
+                ],
+                "chapters": [{"chapterUid": 1, "title": "Example chapter"}],
+            }
+        if api_name == "/review/list/mine":
+            return {"reviews": [], "hasMore": 0}
+        raise AssertionError(api_name)
+
+    cfg = load_config()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        old = (STATE_PATH, PREPARED_DIR, REPORT_PATH)
+        try:
+            globals()["STATE_PATH"] = root / "state.json"
+            globals()["PREPARED_DIR"] = root / "prepared"
+            globals()["REPORT_PATH"] = root / "last_report.json"
+            save_state({"synced": synced, "updated_at": None})
+            with mock.patch(f"{__name__}.weread_call", side_effect=fake_call):
+                report = prepare_pages(
+                    "example-key",
+                    cfg,
+                    limit=5,
+                    book_ids=None,
+                    skip_titles=set(),
+                    skip_synced=True,
+                )
+        finally:
+            globals()["STATE_PATH"], globals()["PREPARED_DIR"], globals()["REPORT_PATH"] = old
+    prepared_ids = [p["bookId"] for p in report["prepared"]]
+    if prepared_ids != ["example-5"]:
+        raise SystemExit(f"self-check failed: did not prepare the next unsynced book ({prepared_ids})")
+    if fetched != ["example-5"]:
+        raise SystemExit(f"self-check failed: fetched synced books {fetched}")
+
+
 def self_check(cfg: dict[str, Any]) -> None:
-    """Build markdown from synthetic rows. No network."""
+    """Synthetic checks. No network."""
     marks = [
         {
             "bookmarkId": "example-mark",
@@ -465,6 +776,11 @@ def self_check(cfg: dict[str, Any]) -> None:
         print("parent: configured")
     else:
         print("parent: unset (set NOTION_PARENT_DATA_SOURCE_ID before creating pages)")
+    _check_gateway_http()
+    _check_upgrade_stops_run()
+    _check_errcode_stays_on_that_book()
+    _check_limit_skips_synced_first()
+    print("gateway and limit checks ok")
 
 
 def main() -> None:
@@ -500,14 +816,17 @@ def main() -> None:
         return
 
     api_key = load_api_key()
-    report = prepare_pages(
-        api_key,
-        cfg,
-        limit=args.limit,
-        book_ids=args.book_ids,
-        skip_titles=set(args.skip_title or []),
-        skip_synced=args.skip_synced,
-    )
+    try:
+        report = prepare_pages(
+            api_key,
+            cfg,
+            limit=args.limit,
+            book_ids=args.book_ids,
+            skip_titles=set(args.skip_title or []),
+            skip_synced=args.skip_synced,
+        )
+    except WeReadUpgradeRequired as e:
+        raise SystemExit(str(e)) from e
 
     print(f"Notebooks: {report['notebooks_total']}")
     print(f"Selected: {len(report['selected'])}")
