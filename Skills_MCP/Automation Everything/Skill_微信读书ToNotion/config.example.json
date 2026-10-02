@@ -1,0 +1,9 @@
+{
+  "NOTION_PARENT_DATA_SOURCE_ID": "YOUR_PARENT_DATA_SOURCE_ID",
+  "title_property": "Title",
+  "author_property": "Author",
+  "category_property": "Category",
+  "category_value": "Reading",
+  "skill_version": "1.0.4",
+  "max_body_chars": 100000
+}
