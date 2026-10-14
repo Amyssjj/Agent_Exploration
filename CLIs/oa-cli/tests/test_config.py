@@ -15,11 +15,13 @@ class TestMetricConfig:
         assert m.unit == ""
         assert m.healthy == 0
         assert m.warning == 0
+        assert m.direction == "higher"
 
     def test_with_values(self):
-        m = MetricConfig(name="rate", unit="%", healthy=95, warning=80)
+        m = MetricConfig(name="rate", unit="%", healthy=95, warning=80, direction="lower")
         assert m.unit == "%"
         assert m.healthy == 95
+        assert m.direction == "lower"
 
 
 class TestGoalConfig:
@@ -63,14 +65,14 @@ class TestProjectConfig:
                 id="cron_reliability",
                 name="Cron Reliability",
                 builtin=True,
-                metrics=[MetricConfig(name="success_rate", unit="%", healthy=95, warning=80)],
+                metrics=[MetricConfig(name="success_rate", unit="%", healthy=95, warning=80, direction="higher")],
             ))
             original.goals.append(GoalConfig(
                 id="custom",
                 name="Custom Goal",
                 builtin=False,
                 pipeline="pipelines/custom.py",
-                metrics=[MetricConfig(name="score", unit="count", healthy=10, warning=5)],
+                metrics=[MetricConfig(name="score", unit="count", healthy=10, warning=5, direction="lower")],
             ))
 
             original.save(config_path)
@@ -84,9 +86,11 @@ class TestProjectConfig:
             assert loaded.goals[0].id == "cron_reliability"
             assert loaded.goals[0].builtin is True
             assert loaded.goals[0].metrics[0].healthy == 95
+            assert loaded.goals[0].metrics[0].direction == "higher"
 
             assert loaded.goals[1].pipeline == "pipelines/custom.py"
             assert loaded.goals[1].builtin is False
+            assert loaded.goals[1].metrics[0].direction == "lower"
 
     def test_from_scan_with_agents(self):
         scan = ScanResult(
@@ -116,10 +120,16 @@ class TestProjectConfig:
         assert config.goals[1].id == "team_health"
         assert config.goals[1].builtin is True
 
+        cron_metrics = {m.name: m for m in config.goals[0].metrics}
+        assert cron_metrics["unknown_runs"].direction == "lower"
+
         # Team health threshold should be based on agent count
         active_metric = config.goals[1].metrics[0]
+        inactive_metric = config.goals[1].metrics[1]
         assert active_metric.name == "active_agent_count"
         assert active_metric.healthy == 3  # 75% of 4
+        assert inactive_metric.name == "inactive_agent_count"
+        assert inactive_metric.direction == "lower"
 
     def test_from_scan_empty(self):
         scan = ScanResult(openclaw_home=Path("/tmp/fake"), found=False)

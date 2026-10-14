@@ -6,52 +6,47 @@
 # Path to your OpenClaw installation
 openclaw_home: ~/.openclaw
 
+# Path to the workspace where daily/long-term memory lives
+workspace_root: ~/.openclaw/workspace
+
+# Memory files used to determine whether work was logged
+memory_paths:
+  - memory/{date}.md
+  - MEMORY.md
+
 # SQLite database path (relative to project root)
 db_path: data/monitor.db
 
-# Agents in your team
-# Auto-detected from OpenClaw sessions. Add/remove as needed.
+# Agents / execution units in your environment
 agents:
-  - id: researcher
-    name: Researcher
-  - id: writer
-    name: Writer
-  - id: reviewer
-    name: Reviewer
-  - id: publisher
-    name: Publisher
+  - id: main
+    name: Main
 
 # Goals to track
-# Built-in goals read directly from OpenClaw data — zero config needed.
-# Add custom goals with your own pipeline scripts.
 goals:
-  # G1: Cron Reliability (built-in)
-  # Reads: ~/.openclaw/cron/jobs.json + runs/*.jsonl
   - id: cron_reliability
     name: Cron Reliability
     builtin: true
     metrics:
       - name: success_rate
         unit: "%"
-        healthy: 95    # green if >= 95%
-        warning: 80    # yellow if >= 80%, red if below
+        healthy: 95
+        warning: 80
 
-  # G2: Team Health (built-in)
-  # Reads: ~/.openclaw/sessions/ + agent memory files
   - id: team_health
     name: Team Health
     builtin: true
     metrics:
       - name: active_agent_count
         unit: count
-        healthy: 3     # green if >= 3 agents active
-        warning: 2     # yellow if >= 2, red if below
+        healthy: 1
+        warning: 1
       - name: memory_discipline
         unit: "%"
-        healthy: 80    # green if >= 80% of agents logged memory
+        healthy: 80
         warning: 50
 
-  # Example: Custom goal (uncomment and edit)
+  # Example: Custom goal
   # - id: content_quality
   #   name: Content Quality
   #   builtin: false

@@ -13,15 +13,18 @@ from .scanner import ScanResult
 @dataclass
 class MetricConfig:
     """Configuration for a single metric within a goal."""
+
     name: str
     unit: str = ""
     healthy: float = 0
     warning: float = 0
+    direction: str = "higher"  # higher | lower
 
 
 @dataclass
 class GoalConfig:
     """Configuration for a tracked goal."""
+
     id: str
     name: str
     builtin: bool = False
@@ -32,6 +35,7 @@ class GoalConfig:
 @dataclass
 class AgentConfig:
     """Configuration for a known agent."""
+
     id: str
     name: str
 
@@ -39,7 +43,10 @@ class AgentConfig:
 @dataclass
 class ProjectConfig:
     """Top-level project configuration."""
+
     openclaw_home: Path = field(default_factory=lambda: Path.home() / ".openclaw")
+    workspace_root: Path = field(default_factory=lambda: Path.home() / ".openclaw" / "workspace")
+    memory_paths: list[str] = field(default_factory=lambda: ["memory/{date}.md", "MEMORY.md"])
     agents: list[AgentConfig] = field(default_factory=list)
     goals: list[GoalConfig] = field(default_factory=list)
     db_path: Path = field(default_factory=lambda: Path("data/monitor.db"))
@@ -53,33 +60,48 @@ class ProjectConfig:
 
         config = cls()
         config.openclaw_home = Path(data.get("openclaw_home", "~/.openclaw")).expanduser()
+
+        raw_workspace = Path(data.get("workspace_root", str(config.openclaw_home / "workspace"))).expanduser()
+        if not raw_workspace.is_absolute():
+            raw_workspace = (path.parent / raw_workspace).resolve()
+        config.workspace_root = raw_workspace
+
+        config.memory_paths = list(data.get("memory_paths", ["memory/{date}.md", "MEMORY.md"]))
+
         raw_db = Path(data.get("db_path", "data/monitor.db"))
         if not raw_db.is_absolute():
             raw_db = path.parent / raw_db
         config.db_path = raw_db.resolve()
 
         for agent_data in data.get("agents", []):
-            config.agents.append(AgentConfig(
-                id=agent_data["id"],
-                name=agent_data.get("name", agent_data["id"]),
-            ))
+            config.agents.append(
+                AgentConfig(
+                    id=agent_data["id"],
+                    name=agent_data.get("name", agent_data["id"]),
+                )
+            )
 
         for goal_data in data.get("goals", []):
             metrics = []
             for m in goal_data.get("metrics", []):
-                metrics.append(MetricConfig(
-                    name=m["name"],
-                    unit=m.get("unit", ""),
-                    healthy=float(m.get("healthy", 0)),
-                    warning=float(m.get("warning", 0)),
-                ))
-            config.goals.append(GoalConfig(
-                id=goal_data["id"],
-                name=goal_data.get("name", goal_data["id"]),
-                builtin=goal_data.get("builtin", False),
-                metrics=metrics,
-                pipeline=goal_data.get("pipeline"),
-            ))
+                metrics.append(
+                    MetricConfig(
+                        name=m["name"],
+                        unit=m.get("unit", ""),
+                        healthy=float(m.get("healthy", 0)),
+                        warning=float(m.get("warning", 0)),
+                        direction=m.get("direction", "higher"),
+                    )
+                )
+            config.goals.append(
+                GoalConfig(
+                    id=goal_data["id"],
+                    name=goal_data.get("name", goal_data["id"]),
+                    builtin=goal_data.get("builtin", False),
+                    metrics=metrics,
+                    pipeline=goal_data.get("pipeline"),
+                )
+            )
 
         return config
 
@@ -90,11 +112,10 @@ class ProjectConfig:
 
         data: dict[str, Any] = {
             "openclaw_home": str(self.openclaw_home),
+            "workspace_root": str(self.workspace_root),
+            "memory_paths": list(self.memory_paths),
             "db_path": str(self.db_path),
-            "agents": [
-                {"id": a.id, "name": a.name}
-                for a in self.agents
-            ],
+            "agents": [{"id": a.id, "name": a.name} for a in self.agents],
             "goals": [],
         }
 
@@ -109,6 +130,7 @@ class ProjectConfig:
                         "unit": m.unit,
                         "healthy": m.healthy,
                         "warning": m.warning,
+                        "direction": m.direction,
                     }
                     for m in goal.metrics
                 ],
@@ -125,39 +147,49 @@ class ProjectConfig:
     @classmethod
     def from_scan(cls, scan: ScanResult) -> "ProjectConfig":
         """Generate a default config from an OpenClaw scan result."""
-        config = cls(openclaw_home=scan.openclaw_home)
+        config = cls(
+            openclaw_home=scan.openclaw_home,
+            workspace_root=scan.openclaw_home / "workspace",
+            memory_paths=["memory/{date}.md", "MEMORY.md"],
+        )
 
-        # Add detected agents
         for agent in scan.agents:
             config.agents.append(AgentConfig(id=agent.id, name=agent.name))
 
-        # Built-in: G1 Cron Reliability
-        config.goals.append(GoalConfig(
-            id="cron_reliability",
-            name="Cron Reliability",
-            builtin=True,
-            metrics=[
-                MetricConfig(name="success_rate", unit="%", healthy=95, warning=80),
-            ],
-        ))
+        config.goals.append(
+            GoalConfig(
+                id="cron_reliability",
+                name="Cron Reliability",
+                builtin=True,
+                metrics=[
+                    MetricConfig(name="success_rate", unit="%", healthy=95, warning=80, direction="higher"),
+                    MetricConfig(name="failed_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                    MetricConfig(name="unknown_runs", unit="count", healthy=0, warning=1, direction="lower"),
+                ],
+            )
+        )
 
-        # Built-in: G2 Team Health
-        agent_count = len(scan.agents)
-        healthy_threshold = max(1, int(agent_count * 0.75))
-        warning_threshold = max(1, int(agent_count * 0.5))
-        config.goals.append(GoalConfig(
-            id="team_health",
-            name="Team Health",
-            builtin=True,
-            metrics=[
-                MetricConfig(
-                    name="active_agent_count",
-                    unit="count",
-                    healthy=healthy_threshold,
-                    warning=warning_threshold,
-                ),
-                MetricConfig(name="memory_discipline", unit="%", healthy=80, warning=50),
-            ],
-        ))
+        agent_count = len(config.agents)
+        healthy_threshold = max(1, int(agent_count * 0.75)) if agent_count else 1
+        warning_threshold = max(1, int(agent_count * 0.5)) if agent_count else 1
+        inactive_warning = max(1, agent_count - healthy_threshold) if agent_count else 1
+        config.goals.append(
+            GoalConfig(
+                id="team_health",
+                name="Team Health",
+                builtin=True,
+                metrics=[
+                    MetricConfig(
+                        name="active_agent_count",
+                        unit="count",
+                        healthy=healthy_threshold,
+                        warning=warning_threshold,
+                        direction="higher",
+                    ),
+                    MetricConfig(name="inactive_agent_count", unit="count", healthy=0, warning=inactive_warning, direction="lower"),
+                    MetricConfig(name="memory_discipline", unit="%", healthy=80, warning=50, direction="higher"),
+                ],
+            )
+        )
 
         return config

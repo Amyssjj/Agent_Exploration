@@ -17,17 +17,25 @@ CREATE TABLE IF NOT EXISTS goal_metrics (
     UNIQUE(date, goal, metric)
 );
 
--- Cron run outcomes: per-slot results
+-- Cron run outcomes: normalized observed runs
 CREATE TABLE IF NOT EXISTS cron_runs (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    date       TEXT NOT NULL,
-    cron_name  TEXT NOT NULL,
-    slot_time  TEXT,
-    status     TEXT NOT NULL DEFAULT 'unknown',
-    job_id     TEXT,
-    run_id     TEXT,
-    error      TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    date            TEXT NOT NULL,
+    cron_name       TEXT NOT NULL,
+    slot_time       TEXT,
+    status          TEXT NOT NULL DEFAULT 'unknown',
+    job_id          TEXT,
+    run_id          TEXT,
+    error           TEXT,
+    run_at_ms       INTEGER,
+    duration_ms     INTEGER,
+    delivery_status TEXT,
+    model           TEXT,
+    provider        TEXT,
+    input_tokens    INTEGER,
+    output_tokens   INTEGER,
+    total_tokens    INTEGER,
+    created_at      TEXT DEFAULT (datetime('now'))
 );
 
 -- Daily agent activity: per-agent daily snapshot
@@ -64,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_goal_metrics_date ON goal_metrics(date);
 CREATE INDEX IF NOT EXISTS idx_goal_metrics_goal ON goal_metrics(goal);
 CREATE INDEX IF NOT EXISTS idx_cron_runs_date ON cron_runs(date);
 CREATE INDEX IF NOT EXISTS idx_cron_runs_name ON cron_runs(cron_name);
+CREATE INDEX IF NOT EXISTS idx_cron_runs_job_id ON cron_runs(job_id);
 CREATE INDEX IF NOT EXISTS idx_daa_date ON daily_agent_activity(date);
 CREATE INDEX IF NOT EXISTS idx_daa_agent ON daily_agent_activity(agent_id);
 CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans(trace_id);

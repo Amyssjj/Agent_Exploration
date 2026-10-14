@@ -58,7 +58,7 @@ export function GoalCard({ goal, index }: Props) {
             <span className="text-[10px] text-gray-400 uppercase tracking-wider">
               {formatMetricName(primary[0])}
             </span>
-            <TrendBadge trend={primary[1].trend} />
+            <TrendBadge trend={primary[1].trend} direction={primary[1].direction} />
           </div>
         </div>
       )}
@@ -83,13 +83,25 @@ export function GoalCard({ goal, index }: Props) {
   );
 }
 
-function TrendBadge({ trend }: { trend: number | null }) {
+function TrendBadge({ trend, direction }: { trend: number | null; direction: "higher" | "lower" }) {
   if (trend === null || trend === undefined) return null;
-  if (trend > 0) {
-    return <span className="text-[11px] font-medium text-emerald-600">▲ +{trend}</span>;
+
+  const improved = direction === "lower" ? trend < 0 : trend > 0;
+  const worsened = direction === "lower" ? trend > 0 : trend < 0;
+
+  if (improved) {
+    return (
+      <span className="text-[11px] font-medium text-emerald-600">
+        {trend > 0 ? `▲ +${trend}` : `▼ ${trend}`}
+      </span>
+    );
   }
-  if (trend < 0) {
-    return <span className="text-[11px] font-medium text-red-500">▼ {trend}</span>;
+  if (worsened) {
+    return (
+      <span className="text-[11px] font-medium text-red-500">
+        {trend > 0 ? `▲ +${trend}` : `▼ ${trend}`}
+      </span>
+    );
   }
   return <span className="text-[11px] font-medium text-gray-400">─</span>;
 }
