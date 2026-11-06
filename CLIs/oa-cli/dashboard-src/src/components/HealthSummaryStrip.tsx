@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import type { GoalSummary, HealthSummary } from "../types";
+import { localizeGoalName, useI18n } from "../i18n";
 
 function healthDotColor(status: string): string {
   switch (status) {
@@ -17,6 +18,7 @@ interface Props {
 
 export function HealthSummaryStrip({ goals, health }: Props) {
   const overallScore = computeOverall(goals);
+  const { lang, t } = useI18n();
 
   return (
     <motion.div
@@ -26,7 +28,7 @@ export function HealthSummaryStrip({ goals, health }: Props) {
       transition={{ duration: 0.4 }}
     >
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-500">Overall Health</span>
+        <span className="text-sm font-medium text-gray-500">{t("health.overallHealth")}</span>
         <span className="text-xl font-bold text-gray-900">
           {overallScore !== null ? `${Math.round(overallScore)}%` : "—"}
         </span>
@@ -34,20 +36,20 @@ export function HealthSummaryStrip({ goals, health }: Props) {
 
       <div className="flex items-center gap-2">
         {goals.map((goal) => (
-          <div key={goal.id} className="flex items-center gap-1" title={`${goal.name}: ${goal.healthStatus}`}>
+          <div key={goal.id} className="flex items-center gap-1" title={`${localizeGoalName(goal.name, lang)}: ${goal.healthStatus}`}>
             <div
               className="w-2.5 h-2.5 rounded-full transition-colors"
               style={{ backgroundColor: healthDotColor(goal.healthStatus) }}
             />
             <span className="text-[9px] text-gray-400 font-mono hidden sm:inline">
-              {goal.name.slice(0, 5)}
+              {localizeGoalName(goal.name, lang).slice(0, 5)}
             </span>
           </div>
         ))}
       </div>
 
       <div className="text-xs text-gray-400 font-mono">
-        {health?.lastCollected || "No data"}
+        {health?.lastCollected || t("health.noData")}
       </div>
     </motion.div>
   );

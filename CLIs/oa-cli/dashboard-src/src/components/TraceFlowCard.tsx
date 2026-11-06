@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { TraceSpan } from "../types";
+import { formatDateTime, formatTime, localizeIdentityLabel, useI18n } from "../i18n";
 
 // ══════════════════════════════════════════════════════
 // UNIFIED DESIGN SYSTEM
@@ -81,14 +82,6 @@ function formatDuration(ms: number | null): string {
   if (ms < 1) return "<1ms";
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function computeLayout(spans: TraceSpan[], rootId: string | null): {
@@ -324,6 +317,7 @@ function renderGraphEdge(edge: FlowGraphEdge, fromNode: FlowGraphNode, toNode: F
 // ══════════════════════════════════════════════════════
 
 function IdentityLegend({ identities }: { identities: NodeIdentity[] }) {
+  const { lang } = useI18n();
   const unique = [...new Set(identities)].filter(i => i !== "default");
   return (
     <div className="flex flex-wrap gap-2 mt-2">
@@ -340,7 +334,7 @@ function IdentityLegend({ identities }: { identities: NodeIdentity[] }) {
           ) : (
             <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: IDENTITY_COLORS[id].fill }} />
           )}
-          <span className="text-[9px] text-gray-400 font-medium">{IDENTITY_LABELS[id]}</span>
+          <span className="text-[9px] text-gray-400 font-medium">{localizeIdentityLabel(id, lang)}</span>
         </div>
       ))}
     </div>
@@ -363,6 +357,7 @@ function getDepth(span: TraceSpan, allSpans: TraceSpan[]): number {
 }
 
 function TraceDetail({ spans: rawSpans, onClose }: { spans: TraceSpan[]; onClose: () => void }) {
+  const { lang, t } = useI18n();
   const spans = [...rawSpans].sort((a, b) => a.start_time.localeCompare(b.start_time));
   const root = spans.find(s => !s.parent_span_id) || spans[0];
   const rootAttrs = parseAttrs(root.attributes);
@@ -390,11 +385,11 @@ function TraceDetail({ spans: rawSpans, onClose }: { spans: TraceSpan[]; onClose
             <div>
               <h2 className="text-lg font-bold text-gray-800">{root.name}</h2>
               <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
-                <span>{formatDate(root.start_time)} {formatTime(root.start_time)}</span>
+                <span>{formatDateTime(root.start_time, lang)}</span>
                 <span>·</span>
-                <span>{spans.length} spans</span>
+                <span>{spans.length} {t("chart.spans")}</span>
                 <span>·</span>
-                <span>{formatDuration(spans.reduce((s, sp) => s + (sp.duration_ms || 0), 0))} total</span>
+                <span>{formatDuration(spans.reduce((s, sp) => s + (sp.duration_ms || 0), 0))} {t("chart.total")}</span>
               </div>
             </div>
           </div>
@@ -414,7 +409,7 @@ function TraceDetail({ spans: rawSpans, onClose }: { spans: TraceSpan[]; onClose
           <div className="border-t border-gray-100 my-4" />
 
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-[0.15em] mb-3">
-            Execution Trace
+            {t("chart.executionTrace")}
           </h3>
           <div className="relative pl-4">
             <div className="absolute left-[19px] top-[20px] bottom-[20px] w-0.5 bg-gray-200" />
@@ -439,7 +434,7 @@ function TraceDetail({ spans: rawSpans, onClose }: { spans: TraceSpan[]; onClose
                       <span className="text-sm font-semibold text-gray-700">{span.name}</span>
                       <span className="text-[10px] text-gray-400 font-mono shrink-0">{formatDuration(span.duration_ms)}</span>
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-400 font-mono shrink-0">
-                        {IDENTITY_LABELS[identity]}
+                        {localizeIdentityLabel(identity, lang)}
                       </span>
                     </div>
                     {Object.keys(attrs).length > 0 && (
@@ -462,11 +457,11 @@ function TraceDetail({ spans: rawSpans, onClose }: { spans: TraceSpan[]; onClose
 
           <div className="border-t border-gray-100 mt-6 pt-4">
             <div className="flex items-center gap-4">
-              <span className="text-[9px] text-gray-400 uppercase tracking-wider font-semibold">Legend:</span>
+              <span className="text-[9px] text-gray-400 uppercase tracking-wider font-semibold">{t("chart.legend")}:</span>
               {(["db", "script", "cron", "source", "agent"] as NodeIdentity[]).map(id => (
                 <div key={id} className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: IDENTITY_COLORS[id].fill }} />
-                  <span className="text-[9px] text-gray-400">{IDENTITY_LABELS[id]}</span>
+                  <span className="text-[9px] text-gray-400">{localizeIdentityLabel(id, lang)}</span>
                 </div>
               ))}
             </div>
@@ -488,6 +483,7 @@ interface TraceFlowCardProps {
 }
 
 export function TraceFlowCard({ spans, traceId, index }: TraceFlowCardProps) {
+  const { lang, t } = useI18n();
   const [showDetail, setShowDetail] = useState(false);
   const root = spans.find(s => !s.parent_span_id) || spans[0];
   const rootAttrs = parseAttrs(root.attributes);
@@ -531,10 +527,10 @@ export function TraceFlowCard({ spans, traceId, index }: TraceFlowCardProps) {
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
                     <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
-                    {root.status === "ok" ? "Success" : root.status}
+                    {root.status === "ok" ? t("chart.success") : root.status}
                   </span>
                   <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">
-                    🔭 Traced
+                    🔭 {t("chart.traced")}
                   </span>
                 </div>
               </div>
@@ -542,9 +538,9 @@ export function TraceFlowCard({ spans, traceId, index }: TraceFlowCardProps) {
           </div>
 
           <div className="flex items-center gap-3 text-[10px] text-gray-400 mb-3">
-            <span className="flex items-center gap-1"><span className="text-gray-300">⬡</span> {spans.length} spans</span>
+            <span className="flex items-center gap-1"><span className="text-gray-300">⬡</span> {spans.length} {t("chart.spans")}</span>
             <span className="flex items-center gap-1"><span className="text-gray-300">⏱</span> {formatDuration(totalMs)}</span>
-            <span className="flex items-center gap-1"><span className="text-gray-300">📅</span> {formatDate(root.start_time)} {formatTime(root.start_time)}</span>
+            <span className="flex items-center gap-1"><span className="text-gray-300">📅</span> {formatDateTime(root.start_time, lang)}</span>
           </div>
 
           {dataFlowGraph ? (
@@ -579,7 +575,7 @@ export function TraceFlowCard({ spans, traceId, index }: TraceFlowCardProps) {
         </div>
 
         <div className="absolute inset-x-0 bottom-0 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <span className="text-[9px] text-gray-300 font-medium">Click to expand trace →</span>
+          <span className="text-[9px] text-gray-300 font-medium">{t("chart.clickToExpand")}</span>
         </div>
       </motion.div>
 

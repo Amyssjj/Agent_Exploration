@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { TraceFlowCard } from "./TraceFlowCard";
 import type { GoalSummary, TraceSpan, CronRun } from "../types";
+import { useI18n } from "../i18n";
 
 interface Props {
   goals: GoalSummary[];
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function MechanismView({ goals, traces, cronRuns }: Props) {
+  const { t } = useI18n();
   // Group traces by trace_id
   const traceGroups: Record<string, TraceSpan[]> = {};
   traces.forEach((t) => {
@@ -44,28 +46,28 @@ export function MechanismView({ goals, traces, cronRuns }: Props) {
         animate={{ opacity: 1, y: 0 }}
       >
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-[0.15em] mb-4">
-          How It Works
+          {t("mechanism.howItWorks")}
         </h2>
 
         <div className="grid grid-cols-3 gap-4">
           <div className="rounded-xl bg-violet-50/80 ring-1 ring-violet-100 p-4 text-center">
             <div className="text-2xl mb-1">📊</div>
-            <div className="text-sm font-bold text-gray-800">Collect</div>
+            <div className="text-sm font-bold text-gray-800">{t("mechanism.collect")}</div>
             <div className="text-[10px] font-mono text-violet-600 uppercase tracking-wider mt-0.5">
-              Data Pipeline
+              {t("mechanism.collectType")}
             </div>
             <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
-              Scans OpenClaw for cron runs, agent sessions, and memory files.
+              {t("mechanism.collectDesc")}
             </p>
           </div>
           <div className="rounded-xl bg-blue-50/80 ring-1 ring-blue-100 p-4 text-center relative">
             <div className="text-2xl mb-1">⚙️</div>
-            <div className="text-sm font-bold text-gray-800">Analyze</div>
+            <div className="text-sm font-bold text-gray-800">{t("mechanism.analyze")}</div>
             <div className="text-[10px] font-mono text-blue-600 uppercase tracking-wider mt-0.5">
-              Goal Pipelines
+              {t("mechanism.analyzeType")}
             </div>
             <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
-              Runs each goal's pipeline to compute metrics, trends, and health status.
+              {t("mechanism.analyzeDesc")}
             </p>
             <div className="absolute left-0 top-1/2 -translate-x-full flex items-center px-1">
               <span className="text-gray-300">←</span>
@@ -76,12 +78,12 @@ export function MechanismView({ goals, traces, cronRuns }: Props) {
           </div>
           <div className="rounded-xl bg-emerald-50/80 ring-1 ring-emerald-100 p-4 text-center">
             <div className="text-2xl mb-1">🖥️</div>
-            <div className="text-sm font-bold text-gray-800">Visualize</div>
+            <div className="text-sm font-bold text-gray-800">{t("mechanism.visualize")}</div>
             <div className="text-[10px] font-mono text-emerald-600 uppercase tracking-wider mt-0.5">
-              Dashboard
+              {t("mechanism.visualizeType")}
             </div>
             <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
-              Serves real-time health cards, trend charts, and trace flows.
+              {t("mechanism.visualizeDesc")}
             </p>
           </div>
         </div>
@@ -96,10 +98,10 @@ export function MechanismView({ goals, traces, cronRuns }: Props) {
         >
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-[0.15em]">
-              🔭 Pipeline Traces
+              🔭 {t("chart.pipelineTraces")}
             </h3>
             <span className="text-[9px] text-gray-300 font-mono">
-              {pipelineTraces.length} pipelines · latest runs
+              {pipelineTraces.length} {t("chart.pipelines")} · {t("chart.latestRuns")}
             </span>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -118,7 +120,7 @@ export function MechanismView({ goals, traces, cronRuns }: Props) {
         transition={{ delay: 0.6 }}
       >
         <span className="text-[10px] text-gray-300 font-mono tracking-wider uppercase">
-          Mechanism View — data flow + pipeline traces
+          {t("mechanism.footer")}
         </span>
       </motion.div>
     </div>

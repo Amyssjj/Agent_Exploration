@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import type { GoalSummary } from "../types";
+import { localizeGoalName, localizeMetricName, useI18n } from "../i18n";
 
 function healthColor(status: string): string {
   switch (status) {
@@ -17,16 +18,13 @@ function formatValue(value: number | null, unit: string): string {
   return `${Math.round(value * 10) / 10}${unit ? ` ${unit}` : ""}`;
 }
 
-function formatMetricName(name: string): string {
-  return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 interface Props {
   goal: GoalSummary;
   index: number;
 }
 
 export function GoalCard({ goal, index }: Props) {
+  const { lang } = useI18n();
   const color = healthColor(goal.healthStatus);
   const metrics = Object.entries(goal.metrics);
   const primary = metrics[0];
@@ -41,7 +39,7 @@ export function GoalCard({ goal, index }: Props) {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-800">{goal.name}</h3>
+        <h3 className="text-sm font-semibold text-gray-800">{localizeGoalName(goal.name, lang)}</h3>
         <div
           className="w-2.5 h-2.5 rounded-full"
           style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}40` }}
@@ -56,7 +54,7 @@ export function GoalCard({ goal, index }: Props) {
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] text-gray-400 uppercase tracking-wider">
-              {formatMetricName(primary[0])}
+              {localizeMetricName(primary[0], lang)}
             </span>
             <TrendBadge trend={primary[1].trend} />
           </div>
@@ -68,7 +66,7 @@ export function GoalCard({ goal, index }: Props) {
         <div className="border-t border-gray-100 pt-2 mt-2 space-y-1.5">
           {metrics.slice(1).map(([name, m]) => (
             <div key={name} className="flex items-center justify-between">
-              <span className="text-[11px] text-gray-400">{formatMetricName(name)}</span>
+              <span className="text-[11px] text-gray-400">{localizeMetricName(name, lang)}</span>
               <span
                 className="text-[11px] font-semibold"
                 style={{ color: healthColor(m.status) }}
